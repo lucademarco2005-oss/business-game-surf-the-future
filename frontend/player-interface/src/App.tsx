@@ -212,7 +212,11 @@ export default function App() {
 
   const executeTrade = async () => {
     if (!tradeOpen || playerId === null) return;
-    const qty = parseInt(tradeQty, 10);
+    const stock = stocks.find(s => s.id === tradeOpen.secId);
+    if (!stock || stock.current_price <= 0) { setTradeMsg({ text: "Titolo non disponibile", ok: false }); return; }
+    const qty = tradeMode === "qty"
+      ? parseInt(tradeQty, 10)
+      : Math.floor((parseFloat(tradeAmount) || 0) / stock.current_price);
     if (isNaN(qty) || qty <= 0) { setTradeMsg({ text: "Quantità non valida", ok: false }); return; }
     setTradeLoading(true); setTradeMsg(null);
     try {
@@ -1067,10 +1071,10 @@ export default function App() {
                               {/* Azioni */}
                               <td className="px-4 py-4">
                                 <div className="flex items-center justify-center gap-1.5">
-                                  <button onClick={() => { setTradeOpen(isOpen && tradeOpen?.type === "BUY" ? null : { secId: pos.security_id, type: "BUY" }); setTradeQty("1"); setTradeMsg(null); }}
+                                  <button onClick={() => { setTradeOpen(isOpen && tradeOpen?.type === "BUY" ? null : { secId: pos.security_id, type: "BUY" }); setTradeQty("1"); setTradeAmount(""); setTradeMode("qty"); setTradeMsg(null); }}
                                     className="text-xs px-3 py-1.5 rounded-xl bg-emerald-900/30 text-emerald-400 hover:bg-emerald-800/50 border border-emerald-800/50 transition-colors cursor-pointer font-black"
                                   >BUY</button>
-                                  <button onClick={() => { setTradeOpen(isOpen && tradeOpen?.type === "SELL" ? null : { secId: pos.security_id, type: "SELL" }); setTradeQty(String(pos.quantity)); setTradeMsg(null); }}
+                                  <button onClick={() => { setTradeOpen(isOpen && tradeOpen?.type === "SELL" ? null : { secId: pos.security_id, type: "SELL" }); setTradeQty(String(pos.quantity)); setTradeAmount(""); setTradeMode("qty"); setTradeMsg(null); }}
                                     className="text-xs px-3 py-1.5 rounded-xl bg-red-900/30 text-red-400 hover:bg-red-800/50 border border-red-800/50 transition-colors cursor-pointer font-black"
                                   >SELL</button>
                                   <button onClick={() => viewStock(pos.security_id)}
@@ -1081,10 +1085,17 @@ export default function App() {
                               </td>
                             </tr>
                             {isOpen && (() => {
-                              const inlineQty = parseInt(tradeQty, 10) || 0;
-                              const inlineTotal = inlineQty * pos.current_price;
                               const inlineCash = player?.current_cash ?? 0;
+                              const inlineEffectiveQty = tradeMode === "qty"
+                                ? parseInt(tradeQty, 10) || 0
+                                : Math.floor((parseFloat(tradeAmount) || 0) / pos.current_price);
+                              const inlineTotal = inlineEffectiveQty * pos.current_price;
                               const inlineRemaining = inlineCash - (tradeOpen.type === "BUY" ? inlineTotal : -inlineTotal);
+                              const inlineMaxAmount = tradeOpen.type === "BUY"
+                                ? Math.floor(inlineCash)
+                                : Math.floor(pos.quantity * pos.current_price);
+                              const inlineCanExecute = inlineEffectiveQty > 0
+                                && (tradeOpen.type === "BUY" ? inlineRemaining >= 0 : inlineEffectiveQty <= pos.quantity);
                               return (
                                 <tr key={`trade-${pos.security_id}`} className="bg-[#171727]/40">
                                   <td colSpan={7} className="px-6 py-3">
@@ -1092,23 +1103,51 @@ export default function App() {
                                       <span className={`text-sm font-black ${tradeOpen.type === "BUY" ? "text-emerald-400" : "text-red-400"}`}>{tradeOpen.type}</span>
                                       <span className="text-sm font-bebas tracking-wider text-white">{pos.ticker}</span>
                                       <span className="text-xs text-slate-500">@ €{fmt(pos.current_price)}</span>
-                                      <div className="flex items-center gap-1">
-                                        <button onClick={() => setTradeQty(q => String(Math.max(1, (parseInt(q) || 1) - 1)))}
-                                          className="w-7 h-7 rounded-lg bg-[#0f0f1e] border border-[#252540] text-slate-300 hover:text-white flex items-center justify-center cursor-pointer font-bold transition-colors">−</button>
-                                        <input type="number" min={1} value={tradeQty} onChange={e => setTradeQty(e.target.value)}
-                                          className="w-16 bg-[#0f0f1e] border border-[#252540] text-white font-mono text-sm font-bold focus:outline-none focus:border-violet-500 text-center rounded-lg px-2 py-1 transition-colors"
-                                        />
-                                        <button onClick={() => setTradeQty(q => String((parseInt(q) || 0) + 1))}
-                                          className="w-7 h-7 rounded-lg bg-[#0f0f1e] border border-[#252540] text-slate-300 hover:text-white flex items-center justify-center cursor-pointer font-bold transition-colors">+</button>
+                                      {/* Toggle Quantità / Importo */}
+                                      <div className="flex items-center gap-1 bg-[#0f0f1e] rounded-lg p-0.5 border border-[#252540]">
+                                        <button onClick={() => setTradeMode("qty")}
+                                          className={`text-[10px] px-2 py-1 rounded-md font-bold transition-all cursor-pointer ${tradeMode === "qty" ? "bg-violet-600 text-white" : "text-slate-400 hover:text-white"}`}
+                                        >Qtà</button>
+                                        <button onClick={() => setTradeMode("amount")}
+                                          className={`text-[10px] px-2 py-1 rounded-md font-bold transition-all cursor-pointer ${tradeMode === "amount" ? "bg-violet-600 text-white" : "text-slate-400 hover:text-white"}`}
+                                        >€</button>
                                       </div>
+                                      {tradeMode === "qty" ? (
+                                        <div className="flex items-center gap-1">
+                                          <button onClick={() => setTradeQty(q => String(Math.max(1, (parseInt(q) || 1) - 1)))}
+                                            className="w-7 h-7 rounded-lg bg-[#0f0f1e] border border-[#252540] text-slate-300 hover:text-white flex items-center justify-center cursor-pointer font-bold transition-colors">−</button>
+                                          <input type="number" min={1} value={tradeQty} onChange={e => setTradeQty(e.target.value)}
+                                            className="w-16 bg-[#0f0f1e] border border-[#252540] text-white font-mono text-sm font-bold focus:outline-none focus:border-violet-500 text-center rounded-lg px-2 py-1 transition-colors"
+                                          />
+                                          <button onClick={() => setTradeQty(q => String((parseInt(q) || 0) + 1))}
+                                            className="w-7 h-7 rounded-lg bg-[#0f0f1e] border border-[#252540] text-slate-300 hover:text-white flex items-center justify-center cursor-pointer font-bold transition-colors">+</button>
+                                          <button onClick={() => setTradeQty(String(tradeOpen.type === "BUY" ? Math.floor(inlineCash / pos.current_price) : pos.quantity))}
+                                            className="text-[10px] px-2 py-1 rounded-md bg-[#0f0f1e] border border-[#252540] text-slate-500 hover:text-violet-300 hover:border-violet-600/40 cursor-pointer font-bold transition-colors ml-1"
+                                            title="Massimo">MAX</button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-slate-500 font-bold text-sm">€</span>
+                                          <input type="number" min={0} step={100} value={tradeAmount} onChange={e => setTradeAmount(e.target.value)}
+                                            placeholder="10000"
+                                            className="w-28 bg-[#0f0f1e] border border-[#252540] text-white font-mono text-sm font-bold focus:outline-none focus:border-violet-500 text-right rounded-lg px-2 py-1 transition-colors placeholder-slate-600"
+                                          />
+                                          <button onClick={() => setTradeAmount(String(inlineMaxAmount))}
+                                            className="text-[10px] px-2 py-1 rounded-md bg-[#0f0f1e] border border-[#252540] text-slate-500 hover:text-violet-300 hover:border-violet-600/40 cursor-pointer font-bold transition-colors"
+                                            title="Massimo">MAX</button>
+                                          {inlineEffectiveQty > 0 && (
+                                            <span className="text-[11px] text-slate-400 font-mono">→ <span className="text-white font-bold">{inlineEffectiveQty}</span> az.</span>
+                                          )}
+                                        </div>
+                                      )}
                                       <span className="text-xs text-slate-400 font-mono">= <span className="text-white font-bold">€{fmt(inlineTotal)}</span></span>
                                       {tradeOpen.type === "BUY" && (
                                         <span className={`text-xs font-mono ${inlineRemaining >= 0 ? "text-slate-500" : "text-red-400"}`}>
                                           residuo €{fmt(inlineRemaining)}
                                         </span>
                                       )}
-                                      <button disabled={tradeLoading} onClick={executeTrade}
-                                        className={`text-sm px-4 py-1.5 rounded-xl font-black transition-all cursor-pointer disabled:opacity-50 active:scale-95 shadow-lg ${tradeOpen.type === "BUY" ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40" : "bg-red-600 hover:bg-red-500 text-white shadow-red-900/40"
+                                      <button disabled={tradeLoading || !inlineCanExecute} onClick={executeTrade}
+                                        className={`text-sm px-4 py-1.5 rounded-xl font-black transition-all cursor-pointer disabled:opacity-40 active:scale-95 shadow-lg ${tradeOpen.type === "BUY" ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40" : "bg-red-600 hover:bg-red-500 text-white shadow-red-900/40"
                                           }`}
                                       >
                                         {tradeLoading ? "..." : "Conferma"}
