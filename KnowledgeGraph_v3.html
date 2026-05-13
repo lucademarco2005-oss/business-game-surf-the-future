@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<title>Knowledge Graph — Multi-Event</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#04060e;font-family:'Inter',system-ui,sans-serif;color:#e2e8f0;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+@keyframes flow{from{stroke-dashoffset:24}to{stroke-dashoffset:0}}
+@keyframes flow-slow{from{stroke-dashoffset:38}to{stroke-dashoffset:0}}
+@keyframes glow-pulse{0%,100%{opacity:.25}50%{opacity:.6}}
+@keyframes fadein{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.flow{animation:flow 1.5s linear infinite;}
+.flow-slow{animation:flow-slow 3s linear infinite;}
+.glow-pulse{animation:glow-pulse 2.5s ease-in-out infinite;}
+
+/* TOP BAR */
+#topbar{padding:7px 14px;background:rgba(4,6,14,.97);border-bottom:1px solid rgba(51,65,85,.28);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;}
+.mode-btn{cursor:pointer;padding:4px 12px;border-radius:5px;font-size:8.5px;font-weight:700;letter-spacing:1px;border:1px solid rgba(51,65,85,.3);background:rgba(14,20,40,.7);color:#334155;transition:all .2s;}
+.mode-btn.active{background:rgba(99,102,241,.2);border-color:rgba(99,102,241,.5);color:#a5b4fc;}
+.sep{width:1px;height:20px;background:rgba(51,65,85,.3);}
+.ev-card{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px;border:1px solid;cursor:pointer;transition:all .2s;flex-shrink:0;}
+.ev-card.active{box-shadow:0 0 12px var(--ec);}
+.ev-num{font-size:8px;font-weight:800;padding:1px 5px;border-radius:3px;opacity:.8;}
+.ev-lbl{font-size:9px;font-weight:700;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ev-cycle{font-size:7.5px;opacity:.6;}
+.scen-btn{cursor:pointer;padding:3px 9px;border-radius:4px;font-size:8px;font-weight:700;letter-spacing:.8px;border:1px solid rgba(51,65,85,.3);background:rgba(14,20,40,.7);color:#334155;transition:all .2s;}
+.scen-btn.active{background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.35);color:#fbbf24;}
+.cycle-acc{cursor:pointer;padding:3px 9px;border-radius:4px;font-size:8px;font-weight:700;border:1px solid rgba(51,65,85,.3);background:rgba(14,20,40,.7);color:#334155;transition:all .2s;}
+.cycle-acc.active{background:rgba(99,102,241,.16);border-color:rgba(99,102,241,.4);color:#a5b4fc;}
+
+/* STRIP */
+#strip{display:flex;align-items:center;border-bottom:1px solid rgba(51,65,85,.2);background:rgba(4,6,14,.9);flex-shrink:0;min-height:32px;}
+.strip-items{display:flex;flex:1;}
+.si{padding:4px 12px;display:flex;align-items:center;gap:5px;border-right:1px solid rgba(51,65,85,.18);cursor:pointer;transition:background .2s;position:relative;}
+.si:hover{background:rgba(20,30,50,.5);}
+.si-dot{width:6px;height:6px;border-radius:50%;}
+.si-lbl{font-size:8px;font-weight:700;}
+.si-val{font-size:9.5px;font-weight:800;}
+.si-delta{font-size:7.5px;opacity:.65;margin-left:2px;}
+.strip-right{display:flex;align-items:center;gap:0;flex-shrink:0;}
+.tool-group{display:flex;align-items:center;gap:3px;padding:3px 8px;border-left:1px solid rgba(51,65,85,.2);}
+.tool-lbl{font-size:7px;font-weight:700;color:rgba(51,65,85,.8);letter-spacing:1.5px;margin-right:2px;}
+.cbtn,.fbtn{cursor:pointer;background:rgba(14,22,42,.7);border:1px solid rgba(51,65,85,.28);border-radius:4px;padding:2px 7px;font-size:7.5px;font-weight:600;color:#1e293b;transition:all .18s;}
+.cbtn:hover,.fbtn:hover{color:#64748b;}
+.cbtn.active{background:rgba(99,102,241,.17);border-color:rgba(99,102,241,.45);color:#a5b4fc;}
+.fbtn.active{background:rgba(34,197,94,.09);border-color:rgba(34,197,94,.32);color:#4ade80;}
+.fbtn.f-neg.active{background:rgba(239,68,68,.09);border-color:rgba(239,68,68,.28);color:#f87171;}
+.fbtn.f-lat.active{background:rgba(100,116,139,.09);border-color:rgba(100,116,139,.22);color:#94a3b8;}
+.reset-btn{cursor:pointer;background:none;border:1px solid rgba(51,65,85,.18);border-radius:4px;padding:2px 9px;font-size:7.5px;color:#1e293b;margin:0 5px;transition:all .2s;}
+.reset-btn:hover{color:#475569;}
+
+/* MAIN */
+#main{display:flex;flex:1;overflow:hidden;}
+#graph-wrap{flex:1;position:relative;}
+svg{width:100%;height:100%;display:block;}
+
+/* PANEL */
+#panel{width:0;overflow:hidden;transition:width .35s cubic-bezier(.4,0,.2,1);background:rgba(4,6,16,.99);border-left:1px solid rgba(51,65,85,.28);display:flex;flex-direction:column;}
+#panel.open{width:300px;}
+#panel-inner{display:flex;flex-direction:column;height:100%;}
+.p-head{padding:12px 13px 9px;border-bottom:1px solid rgba(51,65,85,.22);flex-shrink:0;}
+.p-head-row{display:flex;align-items:center;gap:7px;margin-bottom:4px;}
+.p-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.p-name{font-weight:800;font-size:14px;color:#f8fafc;flex:1;}
+.p-impact{font-size:17px;font-weight:800;}
+.p-note{font-size:7.5px;color:#1e293b;letter-spacing:1px;text-transform:uppercase;}
+.tabs{display:flex;border-bottom:1px solid rgba(51,65,85,.22);flex-shrink:0;}
+.tab-btn{flex:1;padding:7px 4px;font-size:8px;font-weight:600;color:#334155;background:none;border:none;cursor:pointer;letter-spacing:.4px;border-bottom:2px solid transparent;transition:all .2s;}
+.tab-btn.active{color:#e2e8f0;border-bottom-color:#6366f1;}
+.tab-btn:hover:not(.active){color:#64748b;}
+.tab-content{display:none;padding:11px 12px;flex:1;overflow-y:auto;}
+.tab-content.active{display:block;}
+.p-sec{font-size:7px;font-weight:700;color:#1e293b;letter-spacing:2px;text-transform:uppercase;margin-bottom:7px;}
+.c-card{padding:6px 9px;margin-bottom:3px;background:rgba(12,18,36,.7);border-radius:5px;border-left:3px solid transparent;}
+.c-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;}
+.c-ticker{font-weight:700;font-size:10.5px;color:#cbd5e1;}
+.c-val{font-weight:800;font-size:11.5px;}
+.c-bar-bg{height:3px;background:rgba(51,65,85,.4);border-radius:2px;margin-bottom:2px;}
+.c-bar{height:3px;border-radius:2px;}
+.c-note{font-size:8.5px;color:#475569;line-height:1.4;}
+.x-card{padding:7px 9px;margin-bottom:4px;background:rgba(12,18,36,.5);border-radius:6px;border:1px solid rgba(51,65,85,.14);cursor:pointer;transition:all .18s;}
+.x-card:hover{background:rgba(18,26,50,.8);}
+.x-row{display:flex;align-items:center;gap:4px;margin-bottom:2px;}
+.x-sec{font-size:9.5px;font-weight:700;}
+.x-lag{font-size:6.5px;color:#818cf8;background:rgba(99,102,241,.13);padding:1px 4px;border-radius:3px;}
+.x-str{margin-left:auto;font-size:8px;font-weight:700;}
+.x-title{font-size:8.5px;color:#475569;line-height:1.4;}
+.x-why{font-size:8px;color:#334155;margin-top:3px;padding-top:3px;border-top:1px solid rgba(51,65,85,.18);line-height:1.5;display:none;}
+.x-card.exp .x-why{display:block;}
+/* Multi-event breakdown */
+.ev-breakdown{margin-bottom:10px;}
+.ev-breakdown-row{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:5px;margin-bottom:2px;}
+.ev-bd-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.ev-bd-lbl{font-size:8.5px;color:#64748b;flex:1;}
+.ev-bd-val{font-size:10px;font-weight:700;}
+.ev-bd-decay{font-size:7.5px;color:#334155;}
+.net-row{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:rgba(20,30,55,.6);border-radius:5px;margin-top:4px;border:1px solid rgba(51,65,85,.2);}
+.net-lbl{font-size:8px;font-weight:700;color:#64748b;letter-spacing:1px;}
+.net-val{font-size:14px;font-weight:800;}
+.tl-wrap{background:rgba(12,18,36,.5);border-radius:6px;padding:9px 11px;margin-bottom:10px;}
+.tl-lbl{font-size:7px;font-weight:700;color:#1e293b;letter-spacing:1.5px;margin-bottom:6px;}
+.chain-path{font-size:8.5px;color:#475569;line-height:1.9;padding:7px 9px;background:rgba(12,18,36,.5);border-radius:6px;margin-bottom:7px;}
+.mech-card{padding:6px 8px;margin-bottom:3px;background:rgba(12,18,36,.6);border-radius:5px;border-left:2px solid;}
+.mech-n{font-size:8.5px;font-weight:700;margin-bottom:1px;}
+.mech-d{font-size:8px;color:#475569;line-height:1.4;}
+.narr{padding:9px;background:rgba(0,0,0,.2);border-radius:6px;border:1px solid rgba(51,65,85,.2);margin-top:7px;}
+.narr-t{font-size:8px;font-weight:700;margin-bottom:3px;}
+.narr-b{font-size:8.5px;color:#475569;line-height:1.5;}
+
+/* BOTTOM */
+#bottombar{padding:6px 16px;border-top:1px solid rgba(51,65,85,.18);background:rgba(4,6,14,.9);display:flex;align-items:center;gap:8px;flex-shrink:0;}
+#bb-text{font-size:9.5px;color:#1e293b;flex:1;transition:color .3s;}
+#bb-text.active{color:#64748b;}
+#bb-tag{font-size:7.5px;font-weight:700;padding:2px 8px;border-radius:4px;border:1px solid;display:none;}
+
+/* TOOLTIP */
+#tooltip{position:fixed;pointer-events:none;z-index:300;display:none;}
+#tooltip.vis{display:block;animation:fadein .15s ease;}
+.tt{background:rgba(4,8,20,.98);border:1px solid rgba(51,65,85,.45);border-radius:7px;padding:9px 11px;max-width:230px;box-shadow:0 8px 28px rgba(0,0,0,.7);}
+.tt-t{font-size:11px;font-weight:700;color:#f1f5f9;margin-bottom:2px;}
+.tt-b{font-size:9px;color:#64748b;line-height:1.5;}
+
+/* CONN POPUP */
+#conn-popup{position:fixed;display:none;z-index:200;pointer-events:none;}
+#conn-popup.vis{display:block;animation:fadein .15s ease;}
+.cp{background:rgba(4,8,20,.99);border:1px solid rgba(99,102,241,.38);border-radius:10px;padding:13px 15px;width:295px;box-shadow:0 0 35px rgba(99,102,241,.13),0 8px 28px rgba(0,0,0,.8);}
+.cp-hd{display:flex;align-items:center;gap:5px;margin-bottom:8px;}
+.cp-fr,.cp-to{font-size:10.5px;font-weight:700;}
+.cp-arr{font-size:12px;color:#6366f1;}
+.cp-badge{font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;border:1px solid;margin-left:auto;}
+.cp-title{font-size:11.5px;font-weight:700;color:#f1f5f9;margin-bottom:5px;}
+.cp-why{font-size:9px;color:#64748b;line-height:1.55;margin-bottom:9px;}
+.cp-row{display:flex;gap:6px;}
+.cp-m{flex:1;background:rgba(12,20,40,.8);border-radius:5px;padding:5px 7px;text-align:center;}
+.cp-mv{font-size:13px;font-weight:800;margin-bottom:1px;}
+.cp-ml{font-size:7px;color:#475569;letter-spacing:1px;}
+
+/* MULTI-EVENT combined indicator */
+.multi-badge{position:absolute;top:-5px;right:-5px;background:#6366f1;color:#fff;font-size:7px;font-weight:800;padding:1px 4px;border-radius:3px;border:1px solid rgba(99,102,241,.5);}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <!-- Mode buttons -->
+  <button class="mode-btn active" id="btn-single" onclick="setMode('single')">● EVENTO SINGOLO</button>
+  <button class="mode-btn" id="btn-multi" onclick="setMode('multi')">◈ EVENTI COMBINATI</button>
+  <div class="sep"></div>
+  <!-- Event cards (shown in single mode) -->
+  <div id="ev-cards" style="display:flex;gap:5px;align-items:center;"></div>
+  <!-- Scenario selector (shown in multi mode) -->
+  <div id="scen-wrap" style="display:none;gap:5px;align-items:center;display:none;">
+    <span style="font-size:7.5px;color:#334155;font-weight:700;letter-spacing:1.5px;">SCENARIO</span>
+    <button class="scen-btn active" id="scen-a" onclick="setScenario('A')">A — Amplificante</button>
+    <button class="scen-btn" id="scen-b" onclick="setScenario('B')">B — Contraddittorio</button>
+    <div class="sep"></div>
+    <span style="font-size:7.5px;color:#334155;font-weight:700;letter-spacing:1.5px;">FINO AL CICLO</span>
+    <button class="cycle-acc active" id="cacc-1" onclick="setAccCycle(1)">C1</button>
+    <button class="cycle-acc" id="cacc-2" onclick="setAccCycle(2)">C2</button>
+    <button class="cycle-acc" id="cacc-3" onclick="setAccCycle(3)">C3</button>
+  </div>
+</div>
+
+<div id="strip">
+  <div class="strip-items" id="strip-items"></div>
+  <div class="strip-right">
+    <div class="tool-group">
+      <span class="tool-lbl">DECAY</span>
+      <div id="cycle-btns"></div>
+    </div>
+    <div class="tool-group">
+      <span class="tool-lbl">MOSTRA</span>
+      <div id="filter-btns"></div>
+    </div>
+    <button class="reset-btn" id="reset-btn">✕ Reset</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="graph-wrap"><svg id="svg"></svg></div>
+  <div id="panel">
+    <div id="panel-inner">
+      <div class="p-head">
+        <div class="p-head-row">
+          <div class="p-dot" id="p-dot"></div>
+          <span class="p-name" id="p-name"></span>
+          <span class="p-impact" id="p-impact"></span>
+        </div>
+        <div class="p-note" id="p-note"></div>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="companies">Titoli</button>
+        <button class="tab-btn" data-tab="correlations">Correlazioni</button>
+        <button class="tab-btn" data-tab="chain">Catena</button>
+      </div>
+      <div class="tab-content active" id="tab-companies"></div>
+      <div class="tab-content" id="tab-correlations"></div>
+      <div class="tab-content" id="tab-chain"></div>
+    </div>
+  </div>
+</div>
+
+<div id="bottombar">
+  <div id="bb-text">Seleziona modalità, poi clicca un settore o una connessione per esplorare</div>
+  <div id="bb-tag"></div>
+</div>
+
+<div id="tooltip"><div class="tt"><div class="tt-t" id="tt-t"></div><div class="tt-b" id="tt-b"></div></div></div>
+<div id="conn-popup">
+  <div class="cp">
+    <div class="cp-hd"><span class="cp-fr" id="cp-fr"></span><span class="cp-arr">→</span><span class="cp-to" id="cp-to"></span><span class="cp-badge" id="cp-badge"></span></div>
+    <div class="cp-title" id="cp-title"></div>
+    <div class="cp-why" id="cp-why"></div>
+    <div class="cp-row">
+      <div class="cp-m"><div class="cp-mv" id="cp-v1"></div><div class="cp-ml">FORZA</div></div>
+      <div class="cp-m"><div class="cp-mv" id="cp-v2"></div><div class="cp-ml">TIMING</div></div>
+      <div class="cp-m"><div class="cp-mv" id="cp-v3"></div><div class="cp-ml">TIPO</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════ SHARED DATA ═══════════════════════════════════
+const DECAY=[1.0,.65,.35,.12];
+
+const SECTORS=[
+  {id:"biotech",   label:"Biotech",          color:"#34d399", angle:-90,
+   narrative:"Motore dell'innovazione AMR. Le piattaforme mRNA e gli anticorpi monoclonali sono al centro della risposta globale. Ogni nuovo evento che coinvolge salute o R&D amplifica questo settore.",
+   companies:[{ticker:"BNTX",impact:+12.0,max:14,note:"Piattaforma mRNA → vaccino AMR in 8 settimane"},{ticker:"AMGN",impact:+7.5,max:14,note:"Pipeline biologici fase 2 avanzata"},{ticker:"GMAB",impact:+6.0,max:14,note:"3 anticorpi monoclonali anti-superbug"},{ticker:"VRTX",impact:+5.0,max:14,note:"Genomics: sequenza il superbug in 72h"},{ticker:"DHR",impact:+4.5,max:14,note:"Diagnostica rapida: 47 ospedali"}]},
+  {id:"pharma",    label:"Pharma & Precision",color:"#22d3ee", angle:-30,
+   narrative:"Beneficio selettivo: cresce chi ha pipeline AMR attiva o strumenti genomics. Le pharma generaliste restano neutrali. Molto sensibile alla velocità delle approvazioni.",
+   companies:[{ticker:"ILMN",impact:+6.0,max:14,note:"Sequenziamento genomico: contratti OMS e CDC"},{ticker:"IQV",impact:+5.0,max:14,note:"CRO: 14 trial fast-track simultanei"},{ticker:"A",impact:+3.5,max:14,note:"Strumentazione lab: +340% ordini"},{ticker:"WAT",impact:+2.5,max:14,note:"Cromatografia antibiotici nuova gen."}]},
+  {id:"robotics",  label:"Robotics",          color:"#fb923c", angle:+30,
+   narrative:"Beneficio indiretto ma stabile. La crisi AMR accelera l'adozione di robotica per ridurre i contatti umani in ospedali e fabbriche farmaceutiche.",
+   companies:[{ticker:"ISRG",impact:+3.5,max:14,note:"Robot chirurgici: -40% interazioni ad alto rischio"},{ticker:"ROK",impact:+2.5,max:14,note:"Automazione: 3 Big Pharma ordinano linee"},{ticker:"ABBNY",impact:+1.5,max:14,note:"Lab automatizzati: riduce contaminazioni"},{ticker:"SIEGY",impact:+0.5,max:14,note:"Esposizione healthcare indiretta"}]},
+  {id:"food",      label:"Food & Farming",    color:"#a3e635", angle:+90,
+   narrative:"Doppio impatto negativo: antibiotici veterinari sotto scrutinio e concorrenza logistica con il farmaco per i canali refrigerati.",
+   companies:[{ticker:"NSRGY",impact:-3.0,max:14,note:"Costi sterilizzazione +18%"},{ticker:"DANOY",impact:-2.5,max:14,note:"Probiotici sotto indagine EMA"},{ticker:"KO",impact:-1.5,max:14,note:"Packaging sterile: costi +12%"},{ticker:"DE",impact:-0.8,max:14,note:"Limitazioni antibiotici veterinari"}]},
+  {id:"logistics", label:"Logistics",         color:"#818cf8", angle:+150,
+   narrative:"Il settore più colpito dalla crisi AMR. Le restrizioni sanitarie interrompono le rotte cargo, e la domanda di cold chain farmaceutica compete con quella alimentare.",
+   companies:[{ticker:"UPS",impact:-5.0,max:14,note:"23 rotte Asia-Europa sospese"},{ticker:"FDX",impact:-4.5,max:14,note:"Cold chain: +40% costi operativi"},{ticker:"XPO",impact:-3.0,max:14,note:"Contratti healthcare sospesi in 8 paesi"},{ticker:"UNP",impact:-2.0,max:14,note:"Rail freight: impatto indiretto"}]},
+  {id:"healthcare",label:"Healthcare",        color:"#f472b6", angle:+210,
+   narrative:"Risultato biforcante: chi ha pipeline AMR cresce, chi ha esposizione assicurativa crolla. La media settoriale è negativa per il peso di UNH.",
+   companies:[{ticker:"JNJ",impact:+4.0,max:14,note:"Pipeline + fast-track: 2 candidati Phase 3"},{ticker:"AZN",impact:+3.0,max:14,note:"Partnership BNTX già firmata"},{ticker:"UNH",impact:-6.0,max:14,note:"Assicuratore: costi AMR +40%, riserve ko"},{ticker:"LLY",impact:-2.0,max:14,note:"Nessuna pipeline AMR, perde momentum"},{ticker:"NVO",impact:-1.5,max:14,note:"Esposizione generica non-AMR"}]},
+];
+
+const MECHANISMS=[
+  {id:"rd",   label:"Domanda R&D",  sub:"urgente ×10",  dir:+1,mag:.92,color:"#4ade80",desc:"Governi e privati investono 10× i budget ordinari in nuovi antibiotici e piattaforme mRNA. NIH: 8 miliardi in 3 giorni."},
+  {id:"reg",  label:"Fast-track",   sub:"FDA/EMA 18m",  dir:+1,mag:.76,color:"#34d399",desc:"Tempi di approvazione da 10 anni a 18-24 mesi per candidati anti-AMR. Record: primo farmaco in 11 mesi."},
+  {id:"cost", label:"Costi clinici",sub:"↑ +40%",       dir:-1,mag:.85,color:"#f87171",desc:"Infezioni da superbug costano 3-5× più delle batteriche standard. Assicuratori: sinistri +40% nel primo mese."},
+  {id:"supply",label:"Supply chain",sub:"risk +28%",    dir:-1,mag:.67,color:"#fca5a5",desc:"Restrizioni sanitarie sui trasporti bloccano principi attivi asiatici. Cold chain sotto stress: costi operativi +28%."},
+  {id:"sent", label:"Sentiment",    sub:"biotech ↑18%", dir:+1,mag:.90,color:"#86efac",desc:"Investitori ruotano verso biotech: BNTX +22%, ARK Innovation +18% in 5 giorni. Fondi istituzionali: +120 mld."},
+];
+
+const CROSS=[
+  {from:"logistics", to:"healthcare",  dir:-1,mag:.70,lag:1,active:true,  title:"Supply chain → deficit ospedaliero",    short:"Supply→Ospedali", why:"Il 60% dei principi attivi è prodotto in Asia. Le restrizioni creano shortage di antibiotici di seconda linea entro 3-4 settimane."},
+  {from:"biotech",   to:"healthcare",  dir:+1,mag:.65,lag:0,active:true,  title:"Pipeline biotech → partnership healthcare",short:"R&D→Partnership",why:"JNJ e AZN sottoscrivono licenze urgenti con BNTX e AMGN. Due candidati passano da Phase 2 a Phase 3 grazie al trasferimento tecnologico."},
+  {from:"pharma",    to:"biotech",     dir:+1,mag:.60,lag:0,active:true,  title:"Clinical trials → dati genomici per biotech",short:"Trial→Genomics",why:"IQV gestisce trial congiunti. I dati da ILMN alimentano le piattaforme di VRTX e GMAB, accelerando entrambi i settori."},
+  {from:"robotics",  to:"pharma",      dir:+1,mag:.40,lag:1,active:true,  title:"Automazione → capacità produttiva pharma",short:"Robot→Produzione",why:"Big pharma ordinano linee automatizzate per ridurre contaminazione intra-stabilimento. ABB e ROK installano entro il ciclo successivo."},
+  {from:"logistics", to:"food",        dir:-1,mag:.45,lag:0,active:true,  title:"Cold chain sotto pressione → margini food",short:"Cold chain→Food",why:"Rotte dedicate al farmaco competono con quelle alimentari per slot refrigerati. Costi di spedizione a temperatura +28%."},
+  {from:"healthcare",to:"pharma",      dir:+1,mag:.50,lag:0,active:true,  title:"Domanda clinica → accelera sviluppo farmaci",short:"Clinica→Farmaci",why:"Ospedali segnalano pattern di resistenza in tempo reale a IQV e ILMN. Il flusso di dati clinici urgenti accelera i trial."},
+  {from:"robotics",  to:"healthcare",  dir:+1,mag:.35,lag:0,active:true,  title:"Robotica ospedaliera → riduzione trasmissione",short:"Robot→Ospedali",why:"Robot ISRG: -40% interazioni mano-paziente a rischio AMR. Ospedali universitari: backlog di 8 mesi per ISRG."},
+  {from:"food",      to:"healthcare",  dir:-1,mag:.30,lag:2,active:true,  title:"Contaminazioni alimentari → aumento ricoveri",short:"Cibo→Ricoveri",why:"+12% ricoveri per infezioni alimentari nei 2 cicli successivi per indebolimento difese immunitarie."},
+  {from:"biotech",   to:"food",        dir:0, mag:.28,lag:2,active:false, title:"Precision fermentation — LATENTE",           short:"Fermentazione",  why:"La crisi AMR non attiva questa connessione ora. Nel medio termine, il biotech alimenta fermentazione di precisione che sostituirà ingredienti convenzionali."},
+  {from:"robotics",  to:"logistics",   dir:0, mag:.50,lag:2,active:false, title:"Automazione magazzini — LATENTE",            short:"Robot→Warehouse", why:"In condizioni normali, la robotica di magazzino è il driver principale per UPS/FDX. Questa crisi NON attiva questa correlazione."},
+];
+
+const MECH_LINKS=[
+  {m:"rd",    s:"biotech",    str:.95},{m:"rd",    s:"pharma",    str:.75},{m:"rd",    s:"healthcare",str:.40},
+  {m:"reg",   s:"biotech",    str:.85},{m:"reg",   s:"pharma",    str:.80},
+  {m:"cost",  s:"healthcare", str:.90},{m:"cost",  s:"logistics", str:.55},
+  {m:"supply",s:"logistics",  str:.88},{m:"supply",s:"food",      str:.45},
+  {m:"sent",  s:"biotech",    str:.92},{m:"sent",  s:"pharma",    str:.65},{m:"sent",  s:"robotics",  str:.38},
+];
+
+// ═══════════════════════════════════ EVENTS / SCENARIOS ═══════════════════════════════════
+// Each event has sector_impacts (base, at T=0)
+const SCENARIO_A=[
+  {id:"amr",  cycle:1, label:"OMS: Emergenza AMR",                  short:"AMR Emergency",
+   cat:"CRISI SANITARIA", tone:"BIFORCANTE", color:"#f43f5e",
+   sub:"Superbug resistente — 47 paesi — Intensità 9.2/10",
+   sector_impacts:{biotech:+8.2,pharma:+4.5,robotics:+1.8,food:-2.1,logistics:-3.8,healthcare:-1.5}},
+  {id:"fda",  cycle:2, label:"FDA: Primo Vaccino Anti-AMR Approvato",short:"FDA Approval",
+   cat:"BREAKTHROUGH", tone:"POSITIVO", color:"#4ade80",
+   sub:"BNTX ottiene approvazione emergenza — primo in 11 mesi (record storico)",
+   sector_impacts:{biotech:+5.5,pharma:+3.8,robotics:+0.5,food:+0.8,logistics:+1.2,healthcare:+2.5},
+   note_biotech:"BNTX +18% in un giorno, AMGN e GMAB +9% per effetto trascinamento del portafoglio AMR.",
+   note_pharma:"IQV e ILMN +12%: i CRO si trasformano in partner strategici per le fasi di scale-up produttivo.",
+   note_healthcare:"UNH risale +6%: costi AMR attesi in calo con l'arrivo del vaccino. JNJ +5%: accordo di co-marketing.",
+   note_logistics:"UPS +3%: avvio contratti per distribuzione cold-chain globale del vaccino.",
+   note_food:"Danone +2%: riduzione stress normativo su filiera con la risoluzione prevista della crisi.",
+   note_robotics:"ISRG +1.5%: effetto traino positivo del sentiment biotech-healthcare."},
+  {id:"lc",   cycle:3, label:"Sciopero Portuale + Crisi Carburante", short:"Logistics Crisis",
+   cat:"CRISI LOGISTICA", tone:"NEGATIVO", color:"#f87171",
+   sub:"23 dei 40 porti più grandi chiusi — supply chain globale bloccata per 6 settimane",
+   sector_impacts:{biotech:-0.5,pharma:-1.8,robotics:+2.5,food:-3.5,logistics:-5.2,healthcare:-2.0},
+   note_logistics:"UPS -8%, FDX -7%: scioperano dock workers in Europa e USA Ovest. Costi di spedizione +55%.",
+   note_food:"NSRGY -5%, KO -4%: shelf-out alimentare nei supermercati europei, perdita di quote di mercato.",
+   note_healthcare:"UNH -4%: farmaci generici non arrivano, i pazienti usano branded a costo più alto.",
+   note_pharma:"ILMN -2.5%: reagenti di laboratorio bloccati nei porti. Supply chain R&D rallentata.",
+   note_robotics:"ROK +5%, ABBNY +4%: crisi logistica accelera nearshoring e automazione di magazzino urgente.",
+   note_biotech:"BNTX -1%: margini di produzione compressi dai costi di trasporto, ma pipeline invariata."},
+];
+
+const SCENARIO_B=[
+  {id:"amr",  cycle:1, label:"OMS: Emergenza AMR",                    short:"AMR Emergency",
+   cat:"CRISI SANITARIA", tone:"BIFORCANTE", color:"#f43f5e",
+   sub:"Superbug resistente — 47 paesi — Intensità 9.2/10",
+   sector_impacts:{biotech:+8.2,pharma:+4.5,robotics:+1.8,food:-2.1,logistics:-3.8,healthcare:-1.5}},
+  {id:"biocrash",cycle:2,label:"Crollo Biotech: Trial AMR Fallito",    short:"Biotech Crash",
+   cat:"SHOCK DI MERCATO", tone:"NEGATIVO", color:"#f87171",
+   sub:"Candidato leader BNTX fallisce Phase 3 — efficacia 42% vs 68% richiesta da FDA",
+   sector_impacts:{biotech:-6.5,pharma:-2.8,robotics:-1.0,food:+0.5,logistics:+0.5,healthcare:-1.8},
+   note_biotech:"BNTX -22%: il candidato principale crolla. AMGN e GMAB -12% per contagio. Pipeline AMR in discussione.",
+   note_pharma:"IQV -5%: i 14 trial fast-track vengono messi in pausa. ILMN -4%: domanda genomics ridotta.",
+   note_healthcare:"JNJ -4%: la partnership con BNTX perde valore. UNH -2%: scenario AMR torna incerto.",
+   note_logistics:"UPS +1%: riapertura parziale di alcune rotte cargo sospese.",
+   note_food:"NSRGY +1%: riduzione pressione regolatoria su filiera con crisi AMR meno acuta.",
+   note_robotics:"SIEGY -1.5%: riduzione ordini da ospedali che tagliano investimenti in attesa."},
+  {id:"reform",cycle:3,label:"Riforma Assicurativa: Price Cap Healthcare",short:"Health Reform",
+   cat:"POLICY SANITARIA", tone:"BIFORCANTE", color:"#fb923c",
+   sub:"USA e UE impongono tetto ai premi assicurativi — impatto strutturale sul settore",
+   sector_impacts:{biotech:-1.5,pharma:-2.5,robotics:+0.8,food:+0.2,logistics:+0.2,healthcare:+3.5},
+   note_healthcare:"UNH +8%: i consumatori tornano alle polizze, volume in crescita. JNJ +3%: accesso pazienti migliorato.",
+   note_pharma:"LLY -4%: price cap riduce margini sui farmaci ad alto costo. WAT -2%: riduzione R&D spending pharma.",
+   note_biotech:"VRTX -3%: riduzione pricing power su farmaci orfani. BNTX +1%: esente da price cap come vaccino.",
+   note_robotics:"ISRG +2%: ospedali con più budget (risparmi assicurativi) investono in automazione.",
+   note_logistics:"FDX +0.5%: aumento distribuzione farmaci generici ai consumatori.",
+   note_food:"Impatto marginale positivo: reddito disponibile aumenta con premi più bassi."},
+];
+
+// ═══════════════════════════════════ LAYOUT ═══════════════════════════════════
+const W=1100,H=660,CX=W/2,MECH_Y=145,SCX=CX,SCY=415,SCR=192;
+const mPos=MECHANISMS.map((m,i)=>({...m,x:90+i*(W-180)/(MECHANISMS.length-1),y:MECH_Y}));
+const sPos=SECTORS.map(s=>{const r=s.angle*Math.PI/180;return{...s,x:SCX+SCR*Math.cos(r),y:SCY+SCR*Math.sin(r)};});
+const mMap={},sMap={};
+mPos.forEach(m=>mMap[m.id]=m);
+sPos.forEach(s=>sMap[s.id]=s);
+
+// ═══════════════════════════════════ STATE ═══════════════════════════════════
+let state={
+  mode:'single',          // 'single' | 'multi'
+  scenario:'A',           // 'A' | 'B'
+  singleEvent:0,          // index in current scenario
+  accCycle:1,             // up to which cycle (multi mode)
+  decayCycle:0,           // T, T+1, T+2, T+3 view (single mode)
+  filter:'all',
+  sel:null, mechSel:null, crossSel:null
+};
+
+function currentScenario(){ return state.scenario==='A'?SCENARIO_A:SCENARIO_B; }
+
+// Compute per-sector impact in single mode
+function singleImpact(sectorId){
+  const ev=currentScenario()[state.singleEvent];
+  return (ev.sector_impacts[sectorId]||0)*DECAY[state.decayCycle];
+}
+
+// Compute cumulative sector impact in multi mode (up to accCycle)
+function multiImpact(sectorId){
+  const evs=currentScenario();
+  let total=0;
+  evs.forEach(ev=>{
+    if(ev.cycle<=state.accCycle){
+      const lag=state.accCycle-ev.cycle; // 0=this cycle, 1=one ago
+      const d=lag<DECAY.length?DECAY[lag]:0;
+      total+=(ev.sector_impacts[sectorId]||0)*d;
+    }
+  });
+  return total;
+}
+
+function getSectorImpact(sectorId){
+  return state.mode==='single'?singleImpact(sectorId):multiImpact(sectorId);
+}
+
+// Per-event contributions for multi mode breakdown
+function getContributions(sectorId){
+  const evs=currentScenario();
+  return evs.filter(ev=>ev.cycle<=state.accCycle).map(ev=>{
+    const lag=state.accCycle-ev.cycle;
+    const d=lag<DECAY.length?DECAY[lag]:0;
+    const base=ev.sector_impacts[sectorId]||0;
+    return{ev,base,d,value:base*d};
+  });
+}
+
+// ═══════════════════════════════════ HELPERS ═══════════════════════════════════
+function iCol(v){
+  if(v>=6)return"#22c55e";if(v>=3)return"#4ade80";if(v>=.5)return"#86efac";
+  if(v>-.5)return"#94a3b8";if(v>-3)return"#fca5a5";if(v>-6)return"#f87171";return"#ef4444";
+}
+function fmt(v){return(v>0?"+":"")+v.toFixed(1)+"%";}
+function el(tag,attrs,parent){
+  const e=document.createElementNS("http://www.w3.org/2000/svg",tag);
+  for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);
+  if(parent)parent.appendChild(e);return e;
+}
+function txt(elem,t){elem.appendChild(document.createTextNode(t));return elem;}
+function arcPath(x1,y1,x2,y2,f=1){
+  const mx=(x1+x2)/2,my=(y1+y2)/2,dx=mx-SCX,dy=my-SCY,len=Math.sqrt(dx*dx+dy*dy)||1,off=80*f;
+  return`M ${x1} ${y1} Q ${mx+dx/len*off} ${my+dy/len*off} ${x2} ${y2}`;
+}
+function arcMid(x1,y1,x2,y2,f=1){
+  const mx=(x1+x2)/2,my=(y1+y2)/2,dx=mx-SCX,dy=my-SCY,len=Math.sqrt(dx*dx+dy*dy)||1,off=80*f;
+  const cpx=mx+dx/len*off,cpy=my+dy/len*off;
+  return{x:.25*x1+.5*cpx+.25*x2,y:.25*y1+.5*cpy+.25*y2};
+}
+function hexRgb(hex){return`${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;}
+function sectorVisible(s){
+  if(state.filter==='all')return true;
+  const v=getSectorImpact(s.id);
+  if(state.filter==='positive')return v>0;
+  if(state.filter==='negative')return v<0;
+  return true;
+}
+function crossVisible(lk){
+  if(state.filter==='latent')return!lk.active;
+  if(state.filter==='positive')return lk.dir>0&&lk.active;
+  if(state.filter==='negative')return lk.dir<0&&lk.active;
+  return true;
+}
+
+// ═══════════════════════════════════ SVG ═══════════════════════════════════
+function buildSVG(){
+  const svg=document.getElementById("svg");
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  svg.innerHTML="";
+  const fSec=state.sel,fMech=state.mechSel;
+
+  // DEFS
+  const defs=el("defs",{},svg);
+  const mkF=(id,std)=>{const f=el("filter",{id,x:"-80%",y:"-80%",width:"260%",height:"260%"},defs);const b=el("feGaussianBlur",{stdDeviation:std,result:"b"},f);const m=el("feMerge",{},f);el("feMergeNode",{"in":"b"},m);el("feMergeNode",{"in":"SourceGraphic"},m);};
+  mkF("gl1","2.5");mkF("gl2","5");mkF("gl3","9");
+  const mkA=(id,fill)=>{const mk=el("marker",{id,viewBox:"0 0 8 8",refX:"7",refY:"4",markerWidth:"4",markerHeight:"4",orient:"auto"},defs);el("path",{d:"M0 0 L8 4 L0 8 Z",fill},mk);};
+  mkA("a-pos","rgba(74,222,128,.85)");mkA("a-neg","rgba(248,113,113,.85)");mkA("a-lat","rgba(71,85,105,.45)");
+  const bg=el("radialGradient",{id:"rg-bg",cx:"50%",cy:"62%",r:"56%"},defs);
+  el("stop",{offset:"0%","stop-color":"#0b1122"},bg);el("stop",{offset:"100%","stop-color":"#04060e"},bg);
+  SECTORS.forEach(s=>{const g=el("radialGradient",{id:`rg-${s.id}`,cx:"50%",cy:"50%",r:"50%"},defs);el("stop",{offset:"0%","stop-color":s.color,"stop-opacity":"0.22"},g);el("stop",{offset:"100%","stop-color":s.color,"stop-opacity":"0"},g);});
+  el("rect",{width:W,height:H,fill:"url(#rg-bg)"},svg);
+  const pt=el("pattern",{id:"pt",width:"28",height:"28",patternUnits:"userSpaceOnUse"},defs);el("circle",{cx:"14",cy:"14",r:".6",fill:"rgba(100,116,139,.1)"},pt);
+  el("rect",{width:W,height:H,fill:"url(#pt)"},svg);
+  el("circle",{cx:SCX,cy:SCY,r:250,fill:"rgba(10,16,38,.5)",filter:"url(#gl3)"},svg);
+
+  const secOp=id=>{
+    if(!fSec&&!fMech)return 1;
+    if(fMech){const l=MECH_LINKS.filter(x=>x.m===fMech).map(x=>x.s);return l.includes(id)?1:.08;}
+    return fSec===id?1:.12;
+  };
+  const mechOp=id=>{
+    if(!fSec&&!fMech)return 1;
+    if(fMech)return fMech===id?1:.09;
+    const l=MECH_LINKS.filter(x=>x.s===fSec).map(x=>x.m);return l.includes(id)?1:.08;
+  };
+
+  // ── EVENT→MECH ──
+  mPos.forEach(m=>{const col=m.dir>0?"rgba(74,222,128,.09)":"rgba(248,113,113,.09)";el("line",{x1:CX,y1:68,x2:m.x,y2:m.y-22,stroke:col,"stroke-width":1.2,"stroke-dasharray":"3 7"},svg);});
+
+  // ── MECH→SECTOR ──
+  MECH_LINKS.forEach(lk=>{
+    const mn=mMap[lk.m],sn=sMap[lk.s];if(!mn||!sn)return;
+    const pos=mn.dir>0;
+    let op;if(fMech)op=lk.m===fMech?1:.03;else if(fSec)op=lk.s===fSec?1:.03;else op=.07+lk.str*.3;
+    el("line",{x1:mn.x,y1:mn.y+21,x2:sn.x,y2:sn.y-30,stroke:pos?`rgba(74,222,128,${.07+lk.str*.35})`:`rgba(248,113,113,${.07+lk.str*.35})`,"stroke-width":.4+lk.str*1.8,"stroke-dasharray":lk.str>.7?"none":"3 6",opacity:op},svg);
+    if((fMech&&lk.m===fMech)||(fSec&&lk.s===fSec)){el("line",{x1:mn.x,y1:mn.y+21,x2:sn.x,y2:sn.y-30,stroke:pos?"rgba(74,222,128,.75)":"rgba(248,113,113,.75)","stroke-width":1.3,"stroke-dasharray":"5 9",class:"flow",opacity:.9},svg);}
+  });
+
+  // ── CROSS-SECTOR ARCS ──
+  CROSS.forEach((lk,i)=>{
+    const s1=sMap[lk.from],s2=sMap[lk.to];if(!s1||!s2||!crossVisible(lk))return;
+    const isFoc=fSec&&(lk.from===fSec||lk.to===fSec);
+    const isSel=state.crossSel===i;
+    const dimmed=fSec&&!isFoc;
+    const baseOp=dimmed?.05:1;
+    const col=!lk.active?"rgba(71,85,105,.27)":lk.dir>0?`rgba(74,222,128,${.27+lk.mag*.42})`:`rgba(248,113,113,${.27+lk.mag*.42})`;
+    const sw=lk.active?1+lk.mag*3:.8;
+    const mk=!lk.active?"url(#a-lat)":lk.dir>0?"url(#a-pos)":"url(#a-neg)";
+    const fac=isSel?1.35:1;
+    const pathD=arcPath(s1.x,s1.y,s2.x,s2.y,fac);
+    const mid=arcMid(s1.x,s1.y,s2.x,s2.y,fac);
+
+    // In multi mode: scale arc weight by combined sector impacts
+    let multiScale=1;
+    if(state.mode==='multi'){
+      const imp1=Math.abs(getSectorImpact(lk.from)),imp2=Math.abs(getSectorImpact(lk.to));
+      multiScale=Math.min(1.8,0.7+(imp1+imp2)/20);
+    }
+
+    if(isSel||isFoc)el("path",{d:arcPath(s1.x,s1.y,s2.x,s2.y,fac),stroke:lk.dir>0?"rgba(74,222,128,.2)":"rgba(248,113,113,.2)","stroke-width":sw*multiScale+10,fill:"none",filter:"url(#gl2)",opacity:baseOp},svg);
+    el("path",{d:pathD,stroke:col,"stroke-width":sw*multiScale,fill:"none","stroke-dasharray":lk.active?"none":"4 8","marker-end":mk,opacity:isSel?Math.max(.5,1):.27*baseOp*(lk.active?1:.45)},svg);
+    if(lk.active&&!dimmed){
+      const ac=lk.dir>0?"rgba(74,222,128,.88)":"rgba(248,113,113,.88)";
+      el("path",{d:pathD,stroke:ac,"stroke-width":isFoc||isSel?1.8:1,fill:"none","stroke-dasharray":"5 11",class:isFoc||isSel?"flow":"flow-slow","marker-end":mk,opacity:isSel?1:isFoc?.9:.35,style:"pointer-events:none"},svg);
+      if(isFoc||isSel){for(let p=0;p<4;p++){const dot=el("circle",{r:"3",fill:lk.dir>0?"#4ade80":"#f87171",opacity:"0.85"},svg);const am=el("animateMotion",{dur:`${1.6+p*.45}s`,begin:`${p*.4}s`,repeatCount:"indefinite"},dot);const mp=document.createElementNS("http://www.w3.org/2000/svg","mpath");const tid=`ap-${i}-${p}`;el("path",{id:tid,d:pathD},defs);mp.setAttributeNS("http://www.w3.org/1999/xlink","href","#"+tid);am.appendChild(mp);}}
+    }
+    // Label
+    if(lk.active&&lk.mag>=.4&&(!fSec||isFoc)){
+      const lop=baseOp*(isSel?1:isFoc?.95:.55);
+      const lc=lk.dir>0?"rgba(134,239,172,.85)":"rgba(252,165,165,.85)";
+      el("rect",{x:mid.x-27,y:mid.y-9,width:54,height:13,rx:3,fill:"rgba(4,6,14,.88)",stroke:lk.dir>0?"rgba(74,222,128,.18)":"rgba(248,113,113,.18)","stroke-width":.7,opacity:lop,style:"pointer-events:none"},svg);
+      txt(el("text",{x:mid.x,y:mid.y+1.5,"text-anchor":"middle",fill:lc,"font-size":"6.8","font-weight":"700",opacity:lop,style:"pointer-events:none"},svg),lk.short);
+    }
+    // Multi mode: count badge if multiple events activate this connection area
+    if(state.mode==='multi'&&lk.active&&multiScale>1.3&&(!dimmed)){
+      el("circle",{cx:mid.x+28,cy:mid.y-8,r:"6.5",fill:"rgba(99,102,241,.85)",stroke:"rgba(99,102,241,.3)","stroke-width":1},svg);
+      txt(el("text",{x:mid.x+28,y:mid.y-4.5,"text-anchor":"middle",fill:"#e0e7ff","font-size":"7","font-weight":"800"},svg),state.accCycle+"×");
+    }
+    const hit=el("path",{d:arcPath(s1.x,s1.y,s2.x,s2.y),stroke:"transparent","stroke-width":"20",fill:"none",style:"cursor:pointer"},svg);
+    hit.addEventListener("click",e=>{e.stopPropagation();state.crossSel=state.crossSel===i?null:i;if(state.crossSel!==null)showConnPopup(i,e.clientX,e.clientY);else hideConnPopup();rebuild();});
+    hit.addEventListener("mouseenter",()=>{if(state.crossSel!==i)showConnPopupHover(i);});
+    hit.addEventListener("mouseleave",()=>{if(state.crossSel===null)hideConnPopup();});
+  });
+
+  // ── EVENT CARD ──
+  const curEv=currentScenario()[state.singleEvent];
+  const evColor=state.mode==='multi'?"#6366f1":curEv.color;
+  const evLabel=state.mode==='multi'?`Vista Cumulativa — Scenar. ${state.scenario} — Fino a Ciclo ${state.accCycle}`:curEv.label;
+  const evSub=state.mode==='multi'?`${state.accCycle} evento${state.accCycle>1?"i":""} attivi — decay composto — scenario ${state.scenario==='A'?"amplificante":"contraddittorio"}`:curEv.sub;
+  const evg=el("g",{},svg);
+  el("rect",{x:CX-225,y:10,width:450,height:60,rx:11,fill:"rgba(7,10,24,.97)",stroke:`rgba(${hexRgb(evColor)},.45)`,"stroke-width":1.5,filter:"url(#gl1)"},evg);
+  el("rect",{x:CX-225,y:10,width:6,height:60,rx:3,fill:evColor},evg);
+  txt(el("text",{x:CX-205,y:38,fill:"#f8fafc","font-size":13,"font-weight":800},evg),evLabel);
+  txt(el("text",{x:CX-205,y:56,fill:"#475569","font-size":9},evg),evSub);
+  el("rect",{x:CX+52,y:14,width:148,height:17,rx:4,fill:`rgba(${hexRgb(evColor)},.09)`,stroke:`rgba(${hexRgb(evColor)},.25)`,"stroke-width":.8},evg);
+  txt(el("text",{x:CX+126,y:26.5,"text-anchor":"middle",fill:evColor,"font-size":7.2,"font-weight":700,"letter-spacing":2},evg),state.mode==='multi'?`MULTI-EVENTO — C1→C${state.accCycle}`:curEv.cat);
+
+  // Multi mode: mini event timeline inside SVG
+  if(state.mode==='multi'){
+    const evs=currentScenario();
+    const tlG=el("g",{transform:`translate(${W-240},${H-90})`},svg);
+    el("rect",{width:228,height:82,rx:7,fill:"rgba(5,8,18,.92)",stroke:"rgba(51,65,85,.25)","stroke-width":1},tlG);
+    txt(el("text",{x:10,y:15,fill:"rgba(51,65,85,.7)","font-size":7,"font-weight":700,"letter-spacing":2},tlG),"TIMELINE SCENARIO "+state.scenario);
+    evs.forEach((ev,i)=>{
+      const x=15+i*72, y=28;
+      const isActive=ev.cycle<=state.accCycle;
+      el("rect",{x,y,width:62,height:46,rx:5,fill:`rgba(${hexRgb(ev.color)},${isActive?.12:.04})`,stroke:`rgba(${hexRgb(ev.color)},${isActive?.4:.15})`,"stroke-width":isActive?1.5:.8},tlG);
+      txt(el("text",{x:x+31,y:y+13,"text-anchor":"middle",fill:ev.color,"font-size":7.5,"font-weight":800,opacity:isActive?1:.4},tlG),`C${ev.cycle}`);
+      txt(el("text",{x:x+31,y:y+26,"text-anchor":"middle",fill:"#94a3b8","font-size":6.5,opacity:isActive?.9:.3},tlG),ev.short.split(" ")[0]);
+      txt(el("text",{x:x+31,y:y+38,"text-anchor":"middle",fill:"#64748b","font-size":6,opacity:isActive?.8:.25},tlG),ev.short.split(" ").slice(1).join(" "));
+      if(!isActive){
+        el("rect",{x,y,width:62,height:46,rx:5,fill:"rgba(4,6,14,.5)"},tlG);
+        txt(el("text",{x:x+31,y:y+28,"text-anchor":"middle",fill:"rgba(51,65,85,.5)","font-size":8,"font-weight":700},tlG),"→ futuro");
+      }
+    });
+  }
+
+  // ── MECHANISM NODES ──
+  mPos.forEach(m=>{
+    const op=mechOp(m.id);const isSel=state.mechSel===m.id;const pos=m.dir>0;
+    const g=el("g",{opacity:op,style:"cursor:pointer"},svg);
+    if(isSel)el("rect",{x:m.x-56,y:m.y-22,width:112,height:44,rx:9,fill:"none",stroke:m.color,"stroke-width":1.5,filter:"url(#gl2)",opacity:.5},g);
+    el("rect",{x:m.x-56,y:m.y-22,width:112,height:44,rx:9,fill:pos?"rgba(34,197,94,.07)":"rgba(239,68,68,.07)",stroke:isSel?m.color:pos?"rgba(74,222,128,.22)":"rgba(248,113,113,.22)","stroke-width":isSel?1.5:1},g);
+    el("rect",{x:m.x-46,y:m.y+11,width:92,height:2.5,rx:1.2,fill:"rgba(51,65,85,.35)"},g);
+    el("rect",{x:m.x-46,y:m.y+11,width:92*m.mag,height:2.5,rx:1.2,fill:m.color,opacity:.5},g);
+    txt(el("text",{x:m.x,y:m.y-5,"text-anchor":"middle",fill:isSel?"#f8fafc":"#cbd5e1","font-size":9.5,"font-weight":700},g),m.label);
+    txt(el("text",{x:m.x,y:m.y+8,"text-anchor":"middle",fill:m.color,"font-size":8.5},g),m.sub);
+    g.addEventListener("click",e=>{e.stopPropagation();state.mechSel=state.mechSel===m.id?null:m.id;state.sel=null;state.crossSel=null;hideConnPopup();if(!state.mechSel)closePanel();updateBottomBar(state.mechSel?m:null,'mech');rebuild();});
+    g.addEventListener("mouseenter",e=>showTip(m.label,m.desc,e));
+    g.addEventListener("mouseleave",hideTip);
+  });
+
+  // ── SECTOR NODES ──
+  sPos.forEach(s=>{
+    const op=secOp(s.id);const sv=getSectorImpact(s.id);const col=iCol(sv);const r=38;
+    const isSel=state.sel===s.id;const visible=sectorVisible(s);
+    const g=el("g",{style:"cursor:pointer",opacity:visible?op:.07},svg);
+    el("circle",{cx:s.x,cy:s.y,r:r+28,fill:`url(#rg-${s.id})`,opacity:isSel?.85:.4},g);
+    if(isSel)el("circle",{cx:s.x,cy:s.y,r:r+13,fill:"none",stroke:s.color,"stroke-width":2,opacity:.27,filter:"url(#gl1)",class:"glow-pulse"},g);
+    const circ=2*Math.PI*(r+5.5);
+    const arcLen=(Math.min(Math.abs(sv),12)/12)*circ;
+    el("circle",{cx:s.x,cy:s.y,r:r+5.5,fill:"none",stroke:"rgba(51,65,85,.18)","stroke-width":3.2},g);
+    if(Math.abs(sv)>0.2){const ac=sv>0?"rgba(34,197,94,.55)":"rgba(239,68,68,.55)";el("circle",{cx:s.x,cy:s.y,r:r+5.5,fill:"none",stroke:ac,"stroke-width":3.2,"stroke-dasharray":`${arcLen} ${circ}`,"stroke-dashoffset":sv>0?circ*.25:0,transform:`rotate(${sv>0?-90:90} ${s.x} ${s.y})`},g);}
+
+    // Multi mode: stacked event bars below node
+    if(state.mode==='multi'){
+      const contribs=getContributions(s.id).filter(c=>Math.abs(c.value)>.1);
+      const barW=60;
+      contribs.forEach((c,i)=>{
+        const bh=Math.min(Math.abs(c.value)*2.5,14);
+        const bx=s.x-barW/2+i*(barW/contribs.length);
+        const bw=(barW/contribs.length)-1.5;
+        const by=s.y+r+10;
+        el("rect",{x:bx,y:c.value>0?by-bh:by,width:bw,height:bh,rx:1.5,fill:c.ev.color,opacity:.65},g);
+        if(i===contribs.length-1&&contribs.length>1){
+          el("rect",{x:s.x-barW/2-1,y:s.y+r+7,width:barW+2,height:2,rx:1,fill:"rgba(99,102,241,.5)"},g);
+        }
+      });
+    }
+
+    el("circle",{cx:s.x,cy:s.y,r,fill:`rgba(${hexRgb(s.color)},0.09)`,stroke:isSel?s.color:`rgba(${hexRgb(s.color)},0.4)`,"stroke-width":isSel?2:1.5,filter:isSel?"url(#gl1)":"none"},g);
+    txt(el("text",{x:s.x,y:s.y-11,"text-anchor":"middle",fill:isSel?s.color:`rgba(${hexRgb(s.color)},0.85)`,"font-size":9.5,"font-weight":700},g),s.label);
+    txt(el("text",{x:s.x,y:s.y+9,"text-anchor":"middle",fill:col,"font-size":14,"font-weight":800},g),fmt(sv));
+    txt(el("text",{x:s.x,y:s.y+23,"text-anchor":"middle",fill:"rgba(71,85,105,.6)","font-size":7.5},g),s.companies.slice(0,3).map(c=>c.ticker).join(" · "));
+
+    g.addEventListener("click",e=>{e.stopPropagation();state.sel=state.sel===s.id?null:s.id;state.mechSel=null;state.crossSel=null;hideConnPopup();if(state.sel)updatePanel(s);else closePanel();updateBottomBar(state.sel?s:null,'sector');rebuild();});
+    g.addEventListener("mouseenter",e=>{if(state.sel!==s.id)showTip(s.label,`${fmt(sv)} — ${s.companies.length} aziende`,e);});
+    g.addEventListener("mouseleave",hideTip);
+  });
+
+  txt(el("text",{x:SCX,y:SCY-6,"text-anchor":"middle",fill:"rgba(51,65,85,.32)","font-size":8.5,"font-weight":700,"letter-spacing":2},svg),"SETTORI");
+  txt(el("text",{x:SCX,y:SCY+8,"text-anchor":"middle",fill:"rgba(51,65,85,.22)","font-size":7},svg),"6 settori · 25 aziende");
+
+  // Legend
+  const leg=el("g",{transform:`translate(14,${H-115})`},svg);
+  el("rect",{width:170,height:107,rx:7,fill:"rgba(4,7,18,.9)",stroke:"rgba(51,65,85,.22)","stroke-width":1},leg);
+  txt(el("text",{x:10,y:15,fill:"rgba(51,65,85,.7)","font-size":7,"font-weight":700,"letter-spacing":2},leg),"LEGENDA");
+  [{y:32,col:"rgba(74,222,128,.8)",l:"Propagazione positiva",d:false},{y:51,col:"rgba(248,113,113,.8)",l:"Propagazione negativa",d:false},{y:70,col:"rgba(71,85,105,.5)",l:"Relazione latente",d:true},{y:89,col:"#818cf8",l:"Effetto ritardato (lag)",d:false}].forEach(({y,col,l,d})=>{el("line",{x1:10,y1:y,x2:32,y2:y,stroke:col,"stroke-width":2.4,"stroke-dasharray":d?"3 4":"none"},leg);txt(el("text",{x:38,y:y+4,fill:"#4b5563","font-size":9.5},leg),l);});
+
+  svg.addEventListener("click",()=>{state.sel=null;state.mechSel=null;state.crossSel=null;hideConnPopup();closePanel();updateBottomBar(null,null);rebuild();});
+}
+
+// ═══════════════════════════════════ PANEL ═══════════════════════════════════
+function updatePanel(s){
+  document.getElementById("panel").classList.add("open");
+  const sv=getSectorImpact(s.id);
+  document.getElementById("p-dot").style.cssText=`width:10px;height:10px;border-radius:50%;background:${s.color};box-shadow:0 0 10px ${s.color}`;
+  document.getElementById("p-name").textContent=s.label;
+  const pi=document.getElementById("p-impact"); pi.textContent=fmt(sv); pi.style.color=iCol(sv);
+  document.getElementById("p-note").textContent=state.mode==='multi'?`CUMULATIVO — SCENAR. ${state.scenario} — CICLO 1→${state.accCycle}`:`CICLO T${state.decayCycle>0?"+"+state.decayCycle:""} — DECAY ×${DECAY[state.decayCycle].toFixed(2)}`;
+
+  // TAB: Companies
+  const tc=document.getElementById("tab-companies"); tc.innerHTML="";
+  const d=state.mode==='multi'?1:DECAY[state.decayCycle];
+  s.companies.forEach(c=>{
+    const cv=c.impact*d,cc=iCol(cv),bw=Math.min(Math.abs(cv)/c.max*100,100);
+    const div=document.createElement("div"); div.className="c-card"; div.style.borderLeftColor=cc;
+    div.innerHTML=`<div class="c-row"><span class="c-ticker">${c.ticker}</span><span class="c-val" style="color:${cc}">${fmt(cv)}</span></div><div class="c-bar-bg"><div class="c-bar" style="width:${bw}%;background:${cc};opacity:.75"></div></div><div class="c-note">${c.note}</div>`;
+    tc.appendChild(div);
+  });
+
+  // TAB: Correlations
+  const tcor=document.getElementById("tab-correlations"); tcor.innerHTML="";
+  if(state.mode==='multi'){
+    // Show per-event breakdown
+    const contribs=getContributions(s.id);
+    const netDiv=document.createElement("div"); netDiv.className="ev-breakdown";
+    const bTitle=document.createElement("div"); bTitle.className="p-sec"; bTitle.textContent="CONTRIBUTI PER EVENTO"; netDiv.appendChild(bTitle);
+    contribs.forEach(c=>{
+      const row=document.createElement("div"); row.className="ev-breakdown-row";
+      row.style.background=`rgba(${hexRgb(c.ev.color)},.06)`;
+      row.innerHTML=`<div class="ev-bd-dot" style="background:${c.ev.color}"></div><span class="ev-bd-lbl">C${c.ev.cycle} ${c.ev.short}</span><span class="ev-bd-decay">×${c.d.toFixed(2)}</span><span class="ev-bd-val" style="color:${iCol(c.value)}">${fmt(c.value)}</span>`;
+      netDiv.appendChild(row);
+    });
+    const nr=document.createElement("div"); nr.className="net-row";
+    nr.innerHTML=`<span class="net-lbl">NETTO</span><span class="net-val" style="color:${iCol(sv)}">${fmt(sv)}</span>`;
+    netDiv.appendChild(nr); tcor.appendChild(netDiv);
+
+    // Timeline SVG
+    buildTimelineMulti(tcor,s);
+  } else {
+    // Single: timeline T→T+3
+    buildTimelineSingle(tcor,s);
+  }
+  // Connection list
+  const links=CROSS.filter(l=>l.from===s.id||l.to===s.id);
+  if(links.length){
+    const lb=document.createElement("div"); lb.className="p-sec"; lb.style.marginTop="8px"; lb.textContent="CORRELAZIONI SETTORIALI"; tcor.appendChild(lb);
+    links.forEach(lk=>{
+      const isFrom=lk.from===s.id,oid=isFrom?lk.to:lk.from,other=sMap[oid];
+      const col2=!lk.active?"#475569":lk.dir>0?"#4ade80":"#f87171";
+      const bord=!lk.active?"rgba(51,65,85,.16)":lk.dir>0?"rgba(74,222,128,.15)":"rgba(248,113,113,.15)";
+      const div=document.createElement("div"); div.className="x-card"; div.style.borderColor=bord;
+      const lagB=lk.lag>0?`<span class="x-lag">lag+${lk.lag}</span>`:"";
+      const str=!lk.active?"LATENTE":`${lk.dir>0?"▲":"▼"} ${Math.round(lk.mag*100)}%`;
+      div.innerHTML=`<div class="x-row"><span class="x-sec" style="color:${other?.color}">${isFrom?"→":"←"} ${other?.label}</span>${lagB}<span class="x-str" style="color:${col2}">${str}</span></div><div class="x-title">${lk.title}</div><div class="x-why">${lk.why}</div>`;
+      div.addEventListener("click",()=>div.classList.toggle("exp")); tcor.appendChild(div);
+    });
+  }
+
+  // TAB: Chain
+  const tch=document.getElementById("tab-chain"); tch.innerHTML="";
+  const linked=MECH_LINKS.filter(l=>l.s===s.id).map(l=>mMap[l.m]).filter(Boolean);
+  if(linked.length){
+    const cp=document.createElement("div"); cp.className="chain-path";
+    cp.innerHTML=`<span style="color:#f43f5e;font-weight:700">Evento AMR</span>`+linked.map(m=>`<span style="color:#334155"> → </span><span style="color:${m.color};font-weight:600">${m.label}</span>`).join("")+`<span style="color:#334155"> → </span><span style="color:${s.color};font-weight:700">${s.label}</span>`;
+    tch.appendChild(cp);
+    linked.forEach(m=>{const mc=document.createElement("div");mc.className="mech-card";mc.style.borderLeftColor=m.color;mc.innerHTML=`<div class="mech-n" style="color:${m.color}">${m.label} — ${m.sub}</div><div class="mech-d">${m.desc}</div>`;tch.appendChild(mc);});
+  }
+  const narr=document.createElement("div"); narr.className="narr"; narr.style.borderColor=`rgba(${hexRgb(s.color)},.22)`;
+  narr.innerHTML=`<div class="narr-t" style="color:${s.color}">Narrativa ${s.label}</div><div class="narr-b">${s.narrative}</div>`;
+  tch.appendChild(narr);
+}
+
+function buildTimelineSingle(container,s){
+  const wrap=document.createElement("div"); wrap.className="tl-wrap";
+  wrap.innerHTML=`<div class="tl-lbl">DECAY TEMPORALE T → T+3</div>`;
+  const svgEl=document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svgEl.setAttribute("viewBox","0 0 250 55"); svgEl.style.cssText="width:100%;height:50px;display:block;";
+  const vals=DECAY.map(d=>s.companies[0].impact/s.companies[0].max*16*d); // representative
+  const realVals=DECAY.map(dd=>s.companies.reduce((a,c)=>a+c.impact*dd/s.companies.length,0)/s.companies.length*2);
+  _drawTimelineSvg(svgEl,DECAY.map((dd,i)=>({v:getSectorImpactAtCycle(s.id,i), active:i===state.decayCycle})));
+  wrap.appendChild(svgEl); container.appendChild(wrap);
+}
+function getSectorImpactAtCycle(sectorId,cycle){
+  if(state.mode==='single'){const ev=currentScenario()[state.singleEvent];return(ev.sector_impacts[sectorId]||0)*DECAY[cycle];}
+  return 0;
+}
+function buildTimelineMulti(container,s){
+  const wrap=document.createElement("div"); wrap.className="tl-wrap";
+  wrap.innerHTML=`<div class="tl-lbl">EVOLUZIONE CUMULATIVA C1 → C3</div>`;
+  const svgEl=document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svgEl.setAttribute("viewBox","0 0 250 55"); svgEl.style.cssText="width:100%;height:50px;display:block;";
+  const evs=currentScenario();
+  const pts=[1,2,3].map(c=>{
+    let total=0;
+    evs.forEach(ev=>{if(ev.cycle<=c){const lag=c-ev.cycle;const d=lag<DECAY.length?DECAY[lag]:0;total+=(ev.sector_impacts[s.id]||0)*d;}});
+    return{v:total,active:c===state.accCycle};
+  });
+  _drawTimelineSvg(svgEl,pts,["C1","C2","C3"]);
+  wrap.appendChild(svgEl); container.appendChild(wrap);
+}
+function _drawTimelineSvg(svg,pts,labels){
+  const W2=250,H2=55,pad=20;
+  const vals=pts.map(p=>p.v);
+  const maxA=Math.max(...vals.map(Math.abs),.5);
+  const zero=H2*.48;
+  const xStep=(W2-pad*2)/(pts.length-1||1);
+  const zl=document.createElementNS("http://www.w3.org/2000/svg","line");
+  zl.setAttribute("x1",pad);zl.setAttribute("y1",zero);zl.setAttribute("x2",W2-pad);zl.setAttribute("y2",zero);
+  zl.setAttribute("stroke","rgba(51,65,85,.4)");zl.setAttribute("stroke-dasharray","2 4");svg.appendChild(zl);
+  const coords=[];
+  pts.forEach(({v,active},i)=>{
+    const x=pad+i*xStep,y=zero-(v/maxA)*(H2/2-7),cc=iCol(v);
+    coords.push([x,y]);
+    const bh=Math.abs(y-zero)||0;
+    const rect=document.createElementNS("http://www.w3.org/2000/svg","rect");
+    rect.setAttribute("x",x-7);rect.setAttribute("y",v>0?y:zero);rect.setAttribute("width","14");rect.setAttribute("height",bh);
+    rect.setAttribute("fill",cc);rect.setAttribute("opacity",active?"0.75":"0.28");rect.setAttribute("rx","2");svg.appendChild(rect);
+    const c2=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c2.setAttribute("cx",x);c2.setAttribute("cy",y);c2.setAttribute("r",active?"3.5":"2");c2.setAttribute("fill",cc);svg.appendChild(c2);
+    const tv=document.createElementNS("http://www.w3.org/2000/svg","text");
+    tv.setAttribute("x",x);tv.setAttribute("y",v>0?y-5:y+11);tv.setAttribute("text-anchor","middle");
+    tv.setAttribute("font-size","7");tv.setAttribute("fill",cc);tv.setAttribute("font-weight","700");
+    tv.textContent=fmt(v);svg.appendChild(tv);
+    const tl=document.createElementNS("http://www.w3.org/2000/svg","text");
+    tl.setAttribute("x",x);tl.setAttribute("y",H2-1);tl.setAttribute("text-anchor","middle");
+    tl.setAttribute("font-size","7.5");tl.setAttribute("fill",active?"#94a3b8":"rgba(100,116,139,.45)");
+    tl.textContent=(labels?labels[i]:(i===0?"T":`T+${i}`));svg.appendChild(tl);
+  });
+  if(coords.length>1){const ln=document.createElementNS("http://www.w3.org/2000/svg","polyline");ln.setAttribute("points",coords.map(p=>p.join(",")).join(" "));ln.setAttribute("fill","none");ln.setAttribute("stroke","rgba(99,102,241,.45)");ln.setAttribute("stroke-width","1.3");svg.appendChild(ln);}
+}
+
+function closePanel(){document.getElementById("panel").classList.remove("open");}
+
+// ═══════════════════════════════════ UI BUILDERS ═══════════════════════════════════
+function buildEvCards(){
+  const wrap=document.getElementById("ev-cards"); wrap.innerHTML="";
+  const evs=currentScenario();
+  evs.forEach((ev,i)=>{
+    const div=document.createElement("div"); div.className="ev-card"+(state.singleEvent===i&&state.mode==='single'?" active":"");
+    div.style.borderColor=`rgba(${hexRgb(ev.color)},${state.singleEvent===i&&state.mode==='single'?.6:.2})`;
+    div.style.background=`rgba(${hexRgb(ev.color)},${state.singleEvent===i&&state.mode==='single'?.08:.03})`;
+    div.style.setProperty("--ec",ev.color);
+    div.innerHTML=`<span class="ev-num" style="background:rgba(${hexRgb(ev.color)},.15);color:${ev.color}">C${ev.cycle}</span><span class="ev-lbl" style="color:${state.singleEvent===i&&state.mode==='single'?ev.color:"#94a3b8"}">${ev.short}</span>`;
+    div.addEventListener("click",()=>{state.singleEvent=i;if(state.mode!=='single')setMode('single');else{buildEvCards();rebuild();if(state.sel)updatePanel(sMap[state.sel]);}});
+    wrap.appendChild(div);
+  });
+}
+function buildStrip(){
+  const si=document.getElementById("strip-items"); si.innerHTML="";
+  SECTORS.forEach(s=>{
+    const sv=getSectorImpact(s.id),col=iCol(sv);
+    let delta="";
+    if(state.mode==='multi'&&state.accCycle>1){
+      const prev=state.accCycle-1;const evs=currentScenario();
+      let prevTotal=0;
+      evs.forEach(ev=>{if(ev.cycle<=prev){const lag=prev-ev.cycle;const d2=lag<DECAY.length?DECAY[lag]:0;prevTotal+=(ev.sector_impacts[s.id]||0)*d2;}});
+      const diff=sv-prevTotal;
+      delta=`<span class="si-delta" style="color:${iCol(diff)}">${diff>0?"+":""}${diff.toFixed(1)}</span>`;
+    }
+    const div=document.createElement("div"); div.className="si"; div.style.cursor="pointer";
+    div.innerHTML=`<div class="si-dot" style="background:${s.color}"></div><span class="si-lbl" style="color:${s.color}">${s.label.split(" ")[0]}</span><span class="si-val" style="color:${col}">${fmt(sv)}</span>${delta}`;
+    div.addEventListener("click",()=>{state.sel=state.sel===s.id?null:s.id;state.mechSel=null;state.crossSel=null;hideConnPopup();if(state.sel)updatePanel(sMap[s.id]);else closePanel();updateBottomBar(state.sel?sMap[s.id]:null,'sector');rebuild();});
+    si.appendChild(div);
+  });
+}
+function buildToolbar(){
+  const cb=document.getElementById("cycle-btns"); cb.innerHTML="";
+  ["T","T+1","T+2","T+3"].forEach((lb,i)=>{
+    const btn=document.createElement("button"); btn.className="cbtn"+(state.decayCycle===i?" active":""); btn.textContent=lb;
+    btn.addEventListener("click",()=>{if(state.mode==='single'){state.decayCycle=i;buildToolbar();buildStrip();rebuild();if(state.sel)updatePanel(sMap[state.sel]);}});
+    cb.appendChild(btn);
+  });
+  const fb=document.getElementById("filter-btns"); fb.innerHTML="";
+  [{id:"all",l:"Tutti",c:""},{id:"positive",l:"Pos",c:""},{id:"negative",l:"Neg",c:"f-neg"},{id:"latent",l:"Latenti",c:"f-lat"}].forEach(f=>{
+    const btn=document.createElement("button"); btn.className=`fbtn ${f.c}`+(state.filter===f.id?" active":""); btn.textContent=f.l;
+    btn.addEventListener("click",()=>{state.filter=f.id;buildToolbar();rebuild();});
+    fb.appendChild(btn);
+  });
+  document.getElementById("reset-btn").onclick=()=>{
+    state={mode:state.mode,scenario:state.scenario,singleEvent:0,accCycle:1,decayCycle:0,filter:'all',sel:null,mechSel:null,crossSel:null};
+    hideConnPopup();closePanel();updateBottomBar(null,null);buildEvCards();buildToolbar();buildStrip();rebuild();
+  };
+}
+
+// ═══════════════════════════════════ MODE / SCENARIO SWITCHES ═══════════════════════════════════
+function setMode(m){
+  state.mode=m;
+  document.getElementById("btn-single").classList.toggle("active",m==='single');
+  document.getElementById("btn-multi").classList.toggle("active",m==='multi');
+  document.getElementById("ev-cards").style.display=m==='single'?"flex":"none";
+  document.getElementById("scen-wrap").style.display=m==='multi'?"flex":"none";
+  // cycle-btns dimmed in multi
+  document.querySelectorAll(".cbtn").forEach(b=>b.style.opacity=m==='multi'?.35:1);
+  buildEvCards(); buildStrip(); rebuild();
+  if(state.sel) updatePanel(sMap[state.sel]);
+}
+function setScenario(s){
+  state.scenario=s;
+  document.getElementById("scen-a").classList.toggle("active",s==='A');
+  document.getElementById("scen-b").classList.toggle("active",s==='B');
+  state.singleEvent=0;
+  buildEvCards(); buildStrip(); rebuild();
+  if(state.sel) updatePanel(sMap[state.sel]);
+}
+function setAccCycle(c){
+  state.accCycle=c;
+  [1,2,3].forEach(n=>document.getElementById("cacc-"+n)?.classList.toggle("active",n===c));
+  buildStrip(); rebuild();
+  if(state.sel) updatePanel(sMap[state.sel]);
+}
+
+// ═══════════════════════════════════ BOTTOM BAR ═══════════════════════════════════
+function updateBottomBar(item,type){
+  const bt=document.getElementById("bb-text"),btag=document.getElementById("bb-tag");
+  if(!item){bt.className="";bt.textContent="Seleziona modalità, poi clicca un settore o una connessione per esplorare";btag.style.display="none";return;}
+  bt.className="active";
+  if(type==='sector'){bt.textContent=item.narrative;btag.style.display="block";const sv=getSectorImpact(item.id);btag.textContent=fmt(sv);btag.style.color=iCol(sv);btag.style.borderColor=iCol(sv);btag.style.background=`rgba(${hexRgb(iCol(sv)||"#888")},.07)`;}
+  else if(type==='mech'){bt.textContent=item.desc;btag.style.display="block";btag.textContent=item.label;btag.style.color=item.color;btag.style.borderColor=`rgba(${hexRgb(item.color)},.3)`;btag.style.background=`rgba(${hexRgb(item.color)},.08)`;}
+}
+
+// ═══════════════════════════════════ POPUPS ═══════════════════════════════════
+function _fillPopup(i){
+  const lk=CROSS[i],s1=sMap[lk.from],s2=sMap[lk.to];
+  document.getElementById("cp-fr").textContent=s1?.label||lk.from; document.getElementById("cp-fr").style.color=s1?.color||"#e2e8f0";
+  document.getElementById("cp-to").textContent=s2?.label||lk.to; document.getElementById("cp-to").style.color=s2?.color||"#e2e8f0";
+  document.getElementById("cp-title").textContent=lk.title; document.getElementById("cp-why").textContent=lk.why;
+  const col2=!lk.active?"#94a3b8":lk.dir>0?"#4ade80":"#f87171";
+  document.getElementById("cp-v1").textContent=Math.round(lk.mag*100)+"%"; document.getElementById("cp-v1").style.color=col2;
+  document.getElementById("cp-v2").textContent=lk.lag===0?"Diretto":"+"+lk.lag+" cicli"; document.getElementById("cp-v2").style.color="#a5b4fc";
+  document.getElementById("cp-v3").textContent=!lk.active?"Latente":lk.dir>0?"Positivo":"Negativo"; document.getElementById("cp-v3").style.color=col2;
+  const badge=document.getElementById("cp-badge"); badge.textContent=!lk.active?"LATENTE":lk.dir>0?"POSITIVO":"NEGATIVO";
+  badge.style.color=col2; badge.style.borderColor=col2; badge.style.background=!lk.active?"rgba(71,85,105,.14)":lk.dir>0?"rgba(34,197,94,.1)":"rgba(239,68,68,.1)";
+}
+function showConnPopup(i,cx,cy){_fillPopup(i);const p=document.getElementById("conn-popup"),pw=295,ph=220,m=12;p.style.left=Math.min(cx+m,window.innerWidth-pw-m)+"px";p.style.top=Math.max(m,Math.min(cy-ph/2,window.innerHeight-ph-m))+"px";p.className="vis";}
+function showConnPopupHover(i){_fillPopup(i);const p=document.getElementById("conn-popup");p.style.left=(window.innerWidth/2-148)+"px";p.style.top=(window.innerHeight-250)+"px";p.className="vis";}
+function hideConnPopup(){document.getElementById("conn-popup").className="";}
+let _ttTm;
+function showTip(t,b,e){clearTimeout(_ttTm);_ttTm=setTimeout(()=>{document.getElementById("tt-t").textContent=t;document.getElementById("tt-b").textContent=b;const tt=document.getElementById("tooltip"),x=e.clientX+14,y=e.clientY-42;tt.style.left=Math.min(x,window.innerWidth-245)+"px";tt.style.top=Math.max(8,y)+"px";tt.className="vis";},180);}
+function hideTip(){clearTimeout(_ttTm);document.getElementById("tooltip").className="";}
+
+document.querySelectorAll(".tab-btn").forEach(btn=>{btn.addEventListener("click",()=>{document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));btn.classList.add("active");document.getElementById("tab-"+btn.dataset.tab).classList.add("active");});});
+
+// ═══════════════════════════════════ INIT ═══════════════════════════════════
+function rebuild(){buildSVG();}
+buildEvCards();
+buildToolbar();
+buildStrip();
+rebuild();
+</script>
+</body>
+</html>

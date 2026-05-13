@@ -1,0 +1,33 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["/Users/lucademarco/Desktop/Progetto AI/run_server.py"],
+      "cwd": "/Users/lucademarco/Desktop/Progetto AI",
+      "port": 8000
+    },
+    {
+      "name": "player-interface",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3001,
+      "cwd": "frontend/player-interface"
+    },
+    {
+      "name": "master-interface",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3002,
+      "cwd": "frontend/master-interface"
+    },
+    {
+      "name": "tv-dashboard",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3003,
+      "cwd": "frontend/tv-dashboard"
+    }
+  ]
+}

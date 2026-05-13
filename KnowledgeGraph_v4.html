@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<title>Knowledge Graph — Come Funziona</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#05070f;font-family:'Inter',system-ui,sans-serif;color:#e2e8f0;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+@keyframes flow{from{stroke-dashoffset:24}to{stroke-dashoffset:0}}
+@keyframes pulse{0%,100%{opacity:.2}50%{opacity:.6}}
+@keyframes glow-in{0%{opacity:0;transform:scale(.92)}100%{opacity:1;transform:scale(1)}}
+@keyframes beam{0%{stroke-dashoffset:80}100%{stroke-dashoffset:0}}
+@keyframes pop{0%{transform:scale(.8);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+.flow{animation:flow 1.6s linear infinite;}
+.pulse-ring{animation:pulse 2.5s ease-in-out infinite;}
+.beam{animation:beam .5s ease-out forwards;}
+
+/* ─── TOP BAR: event ─── */
+#topbar{padding:9px 20px;background:rgba(5,7,15,.97);border-bottom:1px solid rgba(51,65,85,.2);display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.tb-tag{font-size:8px;font-weight:700;letter-spacing:1.5px;padding:3px 10px;border-radius:4px;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:#f43f5e;flex-shrink:0;}
+.tb-title{font-size:14px;font-weight:800;color:#f8fafc;}
+.tb-sub{font-size:9px;color:#334155;flex:1;}
+#cycle-wrap{display:flex;align-items:center;gap:3px;margin-left:auto;}
+.cycle-lbl{font-size:8px;color:#334155;font-weight:600;letter-spacing:1px;margin-right:4px;}
+.cyc{cursor:pointer;padding:3px 10px;border-radius:4px;font-size:9px;font-weight:700;border:1px solid rgba(51,65,85,.3);background:rgba(14,22,42,.7);color:#334155;transition:all .18s;}
+.cyc.active{background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.45);color:#a5b4fc;}
+
+/* ─── LOGIC STRIP ─── */
+#logic-strip{display:flex;align-items:stretch;background:rgba(4,7,16,.95);border-bottom:1px solid rgba(51,65,85,.15);flex-shrink:0;padding:0 16px;}
+.ls-step{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:background .2s;border-bottom:2px solid transparent;flex:1;}
+.ls-step:hover{background:rgba(15,25,50,.7);}
+.ls-step.active{border-bottom-color:currentColor;}
+.ls-step[data-step="0"].active{border-bottom-color:#f43f5e;}
+.ls-step[data-step="1"].active{border-bottom-color:#a5b4fc;}
+.ls-step[data-step="2"].active{border-bottom-color:#34d399;}
+.ls-step[data-step="3"].active{border-bottom-color:#fb923c;}
+.ls-icon{font-size:18px;flex-shrink:0;}
+.ls-text{}
+.ls-num{font-size:7px;font-weight:700;letter-spacing:2px;opacity:.45;}
+.ls-step[data-step="0"] .ls-num{color:#f43f5e;}
+.ls-step[data-step="1"] .ls-num{color:#a5b4fc;}
+.ls-step[data-step="2"] .ls-num{color:#34d399;}
+.ls-step[data-step="3"] .ls-num{color:#fb923c;}
+.ls-label{font-size:10px;font-weight:800;color:#e2e8f0;margin-top:1px;}
+.ls-desc{font-size:8px;color:#475569;margin-top:1px;line-height:1.3;}
+.ls-arr{display:flex;align-items:center;padding:0 6px;color:#1e293b;font-size:18px;font-weight:300;flex-shrink:0;}
+
+/* ─── MAIN LAYOUT ─── */
+#layout{display:flex;flex:1;overflow:hidden;}
+
+/* ─── LEFT SIDEBAR ─── */
+#sidebar{width:230px;flex-shrink:0;background:rgba(4,6,14,.92);border-right:1px solid rgba(51,65,85,.18);display:flex;flex-direction:column;overflow-y:auto;}
+.sb-section{padding:12px 12px 8px;}
+.sb-section-title{font-size:7.5px;font-weight:700;letter-spacing:2px;color:#1e293b;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(51,65,85,.15);}
+.sb-section-title span{color:inherit;}
+
+/* Event card */
+.sb-event{background:rgba(244,63,94,.06);border:1px solid rgba(244,63,94,.2);border-radius:8px;padding:10px 11px;}
+.sb-event-name{font-size:11px;font-weight:700;color:#f1f5f9;margin-bottom:3px;}
+.sb-event-desc{font-size:8.5px;color:#475569;line-height:1.5;}
+
+/* Mechanism cards */
+.mech-card{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border-radius:7px;margin-bottom:4px;cursor:pointer;transition:all .2s;border:1px solid transparent;}
+.mech-card:hover{background:rgba(15,25,50,.8);}
+.mech-card.active{border-color:rgba(99,102,241,.25);background:rgba(10,18,42,.9);}
+.mech-dir-badge{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0;margin-top:1px;}
+.mech-info{}
+.mech-name{font-size:9.5px;font-weight:700;color:#cbd5e1;line-height:1.2;}
+.mech-sub{font-size:8px;color:#475569;margin-top:2px;}
+.mech-sectors{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
+.mech-sec-tag{font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;border:1px solid transparent;}
+
+/* Instructions */
+.sb-hint{font-size:8.5px;color:#334155;line-height:1.6;padding:8px 10px;background:rgba(10,15,30,.5);border-radius:6px;border:1px solid rgba(51,65,85,.12);}
+.sb-hint strong{color:#475569;}
+
+/* Correlations legend */
+.corr-legend{padding:10px 12px;}
+.corr-leg-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.corr-leg-line{width:32px;height:3px;border-radius:2px;flex-shrink:0;}
+.corr-leg-label{font-size:9px;color:#475569;}
+.corr-leg-sub{font-size:7.5px;color:#1e293b;margin-left:auto;font-weight:600;}
+
+/* ─── SVG GRAPH ─── */
+#graph-wrap{flex:1;position:relative;}
+svg{width:100%;height:100%;display:block;}
+
+/* ─── RIGHT PANEL ─── */
+#panel{width:0;overflow:hidden;transition:width .3s cubic-bezier(.4,0,.2,1);background:rgba(4,6,16,.99);border-left:1px solid rgba(51,65,85,.18);display:flex;flex-direction:column;}
+#panel.open{width:280px;}
+#panel-inner{padding:14px 13px;overflow-y:auto;height:100%;display:flex;flex-direction:column;gap:10px;}
+.pi-head{display:flex;align-items:center;gap:8px;}
+.pi-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.pi-name{font-weight:800;font-size:14px;color:#f8fafc;flex:1;}
+.pi-val{font-size:17px;font-weight:800;}
+.pi-cycle{font-size:7.5px;color:#334155;letter-spacing:1px;text-transform:uppercase;padding:3px 0;}
+.p-section-title{font-size:7px;font-weight:700;color:#1e293b;letter-spacing:2px;text-transform:uppercase;margin:10px 0 5px;}
+.c-card{padding:6px 9px;margin-bottom:3px;background:rgba(12,18,38,.7);border-radius:5px;border-left:3px solid transparent;}
+.c-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;}
+.c-ticker{font-weight:700;font-size:10.5px;color:#cbd5e1;}
+.c-val{font-weight:800;font-size:11px;}
+.c-bar-bg{height:2.5px;background:rgba(51,65,85,.4);border-radius:2px;margin-bottom:2px;}
+.c-bar{height:2.5px;border-radius:2px;}
+.c-note{font-size:8.5px;color:#475569;line-height:1.4;}
+.x-item{padding:7px 9px;margin-bottom:3px;background:rgba(12,18,38,.5);border-radius:6px;border:1px solid rgba(51,65,85,.12);cursor:pointer;transition:background .18s;}
+.x-item:hover{background:rgba(18,26,52,.8);}
+.x-row{display:flex;align-items:center;gap:5px;margin-bottom:2px;}
+.x-sec{font-size:9.5px;font-weight:700;}
+.x-lag{font-size:7px;color:#818cf8;background:rgba(99,102,241,.13);padding:1px 4px;border-radius:3px;}
+.x-str{margin-left:auto;font-size:8px;font-weight:700;}
+.x-desc{font-size:8.5px;color:#475569;line-height:1.4;}
+.x-why{font-size:8px;color:#334155;margin-top:3px;padding-top:3px;border-top:1px solid rgba(51,65,85,.12);line-height:1.5;display:none;}
+.x-item.exp .x-why{display:block;}
+.narr-box{padding:9px 10px;background:rgba(0,0,0,.2);border-radius:7px;border:1px solid rgba(51,65,85,.18);}
+.narr-t{font-size:8px;font-weight:700;margin-bottom:3px;}
+.narr-b{font-size:8.5px;color:#475569;line-height:1.5;}
+.pi-mech-contrib{padding:9px 10px;background:rgba(6,10,24,.7);border-radius:8px;border:1px solid rgba(51,65,85,.18);}
+.pi-mech-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.pi-mech-row:last-child{margin-bottom:0;}
+.pi-mech-icon{width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;}
+.pi-mech-name{font-size:9px;color:#94a3b8;flex:1;}
+.pi-mech-val{font-size:10px;font-weight:700;}
+
+/* ─── BOTTOM BAR ─── */
+#bottombar{padding:7px 20px;border-top:1px solid rgba(51,65,85,.15);background:rgba(4,6,14,.92);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+#bb-text{font-size:9px;color:#1e293b;flex:1;transition:color .3s;}
+#bb-text.active{color:#64748b;}
+
+/* ─── TOOLTIP ─── */
+#tooltip{position:fixed;pointer-events:none;z-index:300;display:none;}
+#tooltip.vis{display:block;}
+.tt{background:rgba(4,8,20,.98);border:1px solid rgba(51,65,85,.35);border-radius:7px;padding:9px 12px;max-width:240px;box-shadow:0 8px 28px rgba(0,0,0,.7);}
+.tt-t{font-size:11px;font-weight:700;color:#f1f5f9;margin-bottom:3px;}
+.tt-b{font-size:9px;color:#64748b;line-height:1.5;}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR: Event info + cycle selector -->
+<div id="topbar">
+  <span class="tb-tag">CRISI SANITARIA</span>
+  <span class="tb-title">OMS: Emergenza Globale AMR</span>
+  <span class="tb-sub">Superbug resistente a tutti gli antibiotici noti — 47 paesi — Intensità 9.2/10</span>
+  <div id="cycle-wrap">
+    <span class="cycle-lbl">QUANTO TEMPO FA:</span>
+    <button class="cyc active" data-c="0">Adesso (T)</button>
+    <button class="cyc" data-c="1">+1 ciclo</button>
+    <button class="cyc" data-c="2">+2 cicli</button>
+    <button class="cyc" data-c="3">+3 cicli</button>
+  </div>
+</div>
+
+<!-- LOGIC STRIP: The 4-step logic flow -->
+<div id="logic-strip">
+  <div class="ls-step active" data-step="0" title="Clicca per evidenziare il passo 1">
+    <span class="ls-icon">📰</span>
+    <div class="ls-text">
+      <div class="ls-num">PASSO 1</div>
+      <div class="ls-label">EVENTO</div>
+      <div class="ls-desc">Succede qualcosa nel mondo reale</div>
+    </div>
+  </div>
+  <div class="ls-arr">→</div>
+  <div class="ls-step" data-step="1" title="Clicca per evidenziare il passo 2">
+    <span class="ls-icon">⚡</span>
+    <div class="ls-text">
+      <div class="ls-num">PASSO 2</div>
+      <div class="ls-label">FORZE DI MERCATO</div>
+      <div class="ls-desc">L'evento attiva 5 forze — clicca ciascuna a sinistra</div>
+    </div>
+  </div>
+  <div class="ls-arr">→</div>
+  <div class="ls-step" data-step="2" title="Clicca per evidenziare il passo 3">
+    <span class="ls-icon">📊</span>
+    <div class="ls-text">
+      <div class="ls-num">PASSO 3</div>
+      <div class="ls-label">SETTORI COLPITI</div>
+      <div class="ls-desc">Le forze spingono su o giù i 6 cerchi nel grafico</div>
+    </div>
+  </div>
+  <div class="ls-arr">→</div>
+  <div class="ls-step" data-step="3" title="Clicca per evidenziare il passo 4">
+    <span class="ls-icon">🔗</span>
+    <div class="ls-text">
+      <div class="ls-num">PASSO 4</div>
+      <div class="ls-label">EFFETTO DOMINO</div>
+      <div class="ls-desc">Un settore colpito ne trascina altri — le frecce lo mostrano</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div id="layout">
+
+  <!-- LEFT SIDEBAR -->
+  <div id="sidebar">
+
+    <!-- EVENT -->
+    <div class="sb-section">
+      <div class="sb-section-title">📰 PASSO 1 — L'EVENTO</div>
+      <div class="sb-event">
+        <div class="sb-event-name">OMS: Emergenza AMR</div>
+        <div class="sb-event-desc">Un superbug resistente a tutti gli antibiotici noti si diffonde in 47 paesi in 6 settimane. L'OMS dichiara emergenza sanitaria globale di livello 1.</div>
+      </div>
+    </div>
+
+    <!-- MECHANISMS -->
+    <div class="sb-section" style="flex:1;">
+      <div class="sb-section-title">⚡ PASSO 2 — FORZE ATTIVATE <span style="color:#334155;font-weight:400;font-size:7px">(clicca una forza)</span></div>
+      <div id="mech-list"></div>
+      <div class="sb-hint" style="margin-top:6px;">
+        Clicca una forza ↑ per vedere quali settori colpisce nel grafico. <strong>Verde = sale, Rosso = scende.</strong>
+      </div>
+    </div>
+
+    <!-- CORRELATIONS LEGEND -->
+    <div class="corr-legend" style="border-top:1px solid rgba(51,65,85,.15);">
+      <div class="sb-section-title" style="margin-bottom:8px;">🔗 PASSO 4 — EFFETTO DOMINO</div>
+      <div class="corr-leg-row">
+        <div class="corr-leg-line" style="background:rgba(74,222,128,.7);"></div>
+        <span class="corr-leg-label">Freccia verde = trascina positivamente</span>
+      </div>
+      <div class="corr-leg-row">
+        <div class="corr-leg-line" style="background:rgba(248,113,113,.7);"></div>
+        <span class="corr-leg-label">Freccia rossa = trascina negativamente</span>
+      </div>
+      <div class="corr-leg-row" style="margin-bottom:0;">
+        <div class="corr-leg-line" style="background:#818cf8;"></div>
+        <span class="corr-leg-label">Effetto ritardato (ciclo successivo)</span>
+      </div>
+      <div class="sb-hint" style="margin-top:8px;">
+        <strong>Clicca una freccia</strong> nel grafico per capire perché un settore ne trascina un altro.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CENTER: SVG Graph -->
+  <div id="graph-wrap"><svg id="svg"></svg></div>
+
+  <!-- RIGHT: Detail Panel -->
+  <div id="panel">
+    <div id="panel-inner">
+      <div class="pi-head">
+        <div class="pi-dot" id="p-dot"></div>
+        <span class="pi-name" id="p-name"></span>
+        <span class="pi-val" id="p-val"></span>
+      </div>
+      <div class="pi-cycle" id="p-cycle"></div>
+      <div id="p-body"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM BAR -->
+<div id="bottombar">
+  <div id="bb-text">👆 Clicca una FORZA a sinistra per vedere quali settori colpisce · Clicca un SETTORE (cerchio) per i dettagli · Clicca una FRECCIA per l'effetto domino</div>
+</div>
+
+<!-- TOOLTIP -->
+<div id="tooltip"><div class="tt"><div class="tt-t" id="tt-t"></div><div class="tt-b" id="tt-b"></div></div></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════════════
+const DECAY = [1.0, .65, .35, .12];
+const DECAY_LABELS = ["Impatto pieno (T=adesso)", "Attenuato al 65% (+1 ciclo)", "Attenuato al 35% (+2 cicli)", "Quasi esaurito, 12% (+3 cicli)"];
+
+// Quale settore ciascuna forza colpisce e con quale intensità
+// Valori: +1 = forte positivo, +0.5 = lieve positivo, -1 = forte negativo, -0.5 = lieve negativo
+const MECHANISMS = [
+  {id:"rd",    label:"Domanda R&D",   icon:"🧬", sub:"Budget ×10 in 3 giorni",     dir:+1,
+   color:"#4ade80", bgCol:"rgba(74,222,128,.12)", bdCol:"rgba(74,222,128,.25)",
+   desc:"Governi e privati investono 10× in nuovi antibiotici e piattaforme mRNA.",
+   sectors:{biotech:+1, pharma:+0.8, robotics:+0.5}},
+  {id:"reg",   label:"Fast-track FDA", icon:"⚡", sub:"10 anni → 18 mesi approvazione", dir:+1,
+   color:"#34d399", bgCol:"rgba(52,211,153,.12)", bdCol:"rgba(52,211,153,.25)",
+   desc:"Le agenzie regolatore aprono corsie veloci per candidati anti-AMR.",
+   sectors:{biotech:+1, pharma:+0.7}},
+  {id:"sent",  label:"Sentiment Mercato", icon:"📈", sub:"Biotech ETF +18% in 5 giorni", dir:+1,
+   color:"#86efac", bgCol:"rgba(134,239,172,.1)", bdCol:"rgba(134,239,172,.2)",
+   desc:"Gli investitori si spostano su biotech. BNTX +22%, AMGN +15%.",
+   sectors:{biotech:+1, pharma:+0.5, robotics:+0.3}},
+  {id:"cost",  label:"Costi Clinici", icon:"📉", sub:"Sinistri assicurativi +40%",   dir:-1,
+   color:"#f87171", bgCol:"rgba(248,113,113,.1)", bdCol:"rgba(248,113,113,.25)",
+   desc:"Infezioni da superbug costano 3-5× le batteriche standard. Assicuratori in perdita.",
+   sectors:{healthcare:-1, food:-0.4}},
+  {id:"supply",label:"Crisi Supply Chain", icon:"🚢", sub:"Principi attivi bloccati in Asia", dir:-1,
+   color:"#fca5a5", bgCol:"rgba(252,165,165,.08)", bdCol:"rgba(252,165,165,.2)",
+   desc:"Restrizioni sanitarie bloccano principi attivi asiatici. Cold chain: +28% costi.",
+   sectors:{logistics:-1, food:-0.6, healthcare:-0.3}},
+];
+
+const SECTORS = [
+  {id:"biotech",   label:"Biotech",          color:"#34d399", impact:+8.2, angle:-90,
+   emoji:"🧬",
+   perché:"Massimo beneficiario. Piattaforme mRNA e anticorpi monoclonali sono la risposta più rapida. Beneficia di tutte e 3 le forze positive: R&D, Fast-track, Sentiment.",
+   companies:[{t:"BNTX",v:+12.0,max:14,n:"Vaccino mRNA anti-AMR in 8 settimane"},{t:"AMGN",v:+7.5,max:14,n:"Pipeline biologici fase 2 avanzata"},{t:"GMAB",v:+6.0,max:14,n:"3 anticorpi monoclonali in sviluppo"},{t:"VRTX",v:+5.0,max:14,n:"Genomics: sequenzia superbug in 72h"},{t:"DHR",v:+4.5,max:14,n:"Diagnostica rapida: 47 ospedali"}]},
+  {id:"pharma",    label:"Pharma & Precision",color:"#22d3ee", impact:+4.5, angle:-30,
+   emoji:"💊",
+   perché:"Beneficio selettivo per chi ha pipeline AMR attiva o strumenti genomics. Le big pharma generaliste restano neutre.",
+   companies:[{t:"ILMN",v:+6.0,max:14,n:"Sequenziamento genomico: contratti OMS e CDC"},{t:"IQV",v:+5.0,max:14,n:"CRO: 14 trial fast-track simultanei"},{t:"A",v:+3.5,max:14,n:"Strumentazione: +340% ordini ospedali"},{t:"WAT",v:+2.5,max:14,n:"Cromatografia antibiotici nuova gen."}]},
+  {id:"robotics",  label:"Robotics",          color:"#fb923c", impact:+1.8, angle:+30,
+   emoji:"🤖",
+   perché:"Beneficio indiretto ma solido. La crisi accelera l'adozione di robotica per ridurre i contatti umani in ospedali e fabbriche farmaceutiche.",
+   companies:[{t:"ISRG",v:+3.5,max:14,n:"Robot chirurgici: -40% interazioni ad alto rischio"},{t:"ROK",v:+2.5,max:14,n:"Automazione: 3 Big Pharma ordinano linee"},{t:"ABBNY",v:+1.5,max:14,n:"Lab automatizzati: meno contaminazione"},{t:"SIEGY",v:+0.5,max:14,n:"Esposizione healthcare indiretta"}]},
+  {id:"food",      label:"Food & Farming",    color:"#a3e635", impact:-2.1, angle:+90,
+   emoji:"🌾",
+   perché:"Doppio impatto negativo: antibiotici veterinari sotto scrutinio e concorrenza logistica con farmaci per i canali refrigerati.",
+   companies:[{t:"NSRGY",v:-3.0,max:14,n:"Costi sterilizzazione +18%"},{t:"DANOY",v:-2.5,max:14,n:"Probiotici sotto indagine EMA"},{t:"KO",v:-1.5,max:14,n:"Packaging sterile: +12% costi"},{t:"DE",v:-0.8,max:14,n:"Antibiotici veterinari limitati"}]},
+  {id:"logistics", label:"Logistics",         color:"#818cf8", impact:-3.8, angle:+150,
+   emoji:"🚢",
+   perché:"Più colpita dalle restrizioni sanitarie sui trasporti. La cold chain farmaceutica compete con quella alimentare per i canali refrigerati disponibili.",
+   companies:[{t:"UPS",v:-5.0,max:14,n:"23 rotte Asia-Europa sospese"},{t:"FDX",v:-4.5,max:14,n:"Cold chain farmaceutica: +40% costi"},{t:"XPO",v:-3.0,max:14,n:"Contratti healthcare sospesi 8 paesi"},{t:"UNP",v:-2.0,max:14,n:"Rail freight: impatto indiretto"}]},
+  {id:"healthcare",label:"Healthcare",        color:"#f472b6", impact:-1.5, angle:+210,
+   emoji:"🏥",
+   perché:"Biforcante internamente: chi ha pipeline AMR (JNJ, AZN) cresce, chi è esposto ai costi assicurativi (UNH) crolla. La media è negativa per il peso di UNH.",
+   companies:[{t:"JNJ",v:+4.0,max:14,n:"Pipeline antibiotici: 2 candidati Phase 3"},{t:"AZN",v:+3.0,max:14,n:"Partnership BNTX già firmata"},{t:"UNH",v:-6.0,max:14,n:"Assicuratore: costi AMR +40%"},{t:"LLY",v:-2.0,max:14,n:"Nessuna pipeline AMR"},{t:"NVO",v:-1.5,max:14,n:"Esposizione generica non-AMR"}]},
+];
+
+// Solo le 5 correlazioni più forti
+const CROSS = [
+  {from:"logistics", to:"healthcare",  dir:-1, mag:.70, lag:1,
+   title:"Logistics → Healthcare",
+   desc:"I farmaci non arrivano",
+   why:"Il 60% dei principi attivi è prodotto in Asia. Le restrizioni creano shortage di antibiotici di seconda linea entro 3-4 settimane. Gli ospedali ne risentono con ritardo (1 ciclo)."},
+  {from:"biotech",   to:"healthcare",  dir:+1, mag:.65, lag:0,
+   title:"Biotech → Healthcare",
+   desc:"Pipeline biotech salva gli ospedali AMR",
+   why:"JNJ e AZN sottoscrivono licenze urgenti con BNTX e AMGN. Due candidati passano da Phase 2 a Phase 3. Gli ospedali con accesso anticipato beneficiano subito."},
+  {from:"pharma",    to:"biotech",     dir:+1, mag:.60, lag:0,
+   title:"Pharma → Biotech",
+   desc:"I dati genomici di Pharma accelerano Biotech",
+   why:"IQV gestisce trial congiunti. I dati di ILMN alimentano le piattaforme di VRTX e GMAB, accelerando entrambi verso approvazione."},
+  {from:"healthcare",to:"pharma",      dir:+1, mag:.50, lag:0,
+   title:"Healthcare → Pharma",
+   desc:"Ospedali inviano dati urgenti a Pharma",
+   why:"Gli ospedali segnalano pattern di resistenza in tempo reale a IQV e ILMN. Dati clinici urgenti accelerano i trial."},
+  {from:"logistics", to:"food",        dir:-1, mag:.45, lag:0,
+   title:"Logistics → Food",
+   desc:"Meno spazio nei camion frigo = cibo più caro",
+   why:"Le rotte per i farmaci competono con quelle alimentari per slot refrigerati. Costi di spedizione a temperatura +28%."},
+];
+
+// ════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════
+const W=820, H=580, CX=W/2, SCX=CX, SCY=295, SCR=190;
+let selSector=null, selCross=null, selMech=null, curCycle=0, guideStep=-1;
+
+const sPos = SECTORS.map(s => {
+  const r = s.angle * Math.PI / 180;
+  return {...s, x: SCX + SCR * Math.cos(r), y: SCY + SCR * Math.sin(r)};
+});
+const sMap = {};
+sPos.forEach(s => sMap[s.id] = s);
+
+// ════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════
+function iCol(v) {
+  if (v >= 6)  return "#22c55e";
+  if (v >= 3)  return "#4ade80";
+  if (v >= .5) return "#86efac";
+  if (v > -.5) return "#94a3b8";
+  if (v > -3)  return "#fca5a5";
+  if (v > -6)  return "#f87171";
+  return "#ef4444";
+}
+function fmt(v) { return (v > 0 ? "+" : "") + v.toFixed(1) + "%"; }
+function el(tag, attrs, parent) {
+  const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function svgText(parent, t, attrs) {
+  const e = el("text", attrs, parent);
+  e.textContent = t;
+  return e;
+}
+
+function arcPath(x1, y1, x2, y2) {
+  const mx=(x1+x2)/2, my=(y1+y2)/2;
+  const dx=mx-SCX, dy=my-SCY;
+  const len=Math.sqrt(dx*dx+dy*dy)||1;
+  const off=90;
+  return `M ${x1} ${y1} Q ${mx+dx/len*off} ${my+dy/len*off} ${x2} ${y2}`;
+}
+function arcMid(x1, y1, x2, y2) {
+  const mx=(x1+x2)/2, my=(y1+y2)/2;
+  const dx=mx-SCX, dy=my-SCY;
+  const len=Math.sqrt(dx*dx+dy*dy)||1;
+  const off=90;
+  const cpx=mx+dx/len*off, cpy=my+dy/len*off;
+  return {x:.25*x1+.5*cpx+.25*x2, y:.25*y1+.5*cpy+.25*y2};
+}
+function hexRgb(hex) {
+  return `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;
+}
+
+// ════════════════════════════════════════════════════════════
+// SVG BUILD
+// ════════════════════════════════════════════════════════════
+function buildSVG() {
+  const svg = document.getElementById("svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = "";
+  const d = DECAY[curCycle];
+
+  // Determine which sectors to highlight (due to selected mechanism)
+  const mechHighlight = {}; // sectorId → intensity (-1 to +1)
+  if (selMech !== null) {
+    const m = MECHANISMS[selMech];
+    Object.entries(m.sectors).forEach(([sid, intensity]) => {
+      mechHighlight[sid] = intensity;
+    });
+  }
+  const hasMechSel = selMech !== null;
+  const hasSectorSel = selSector !== null;
+  const hasCrossSel = selCross !== null;
+
+  // ── DEFS ──
+  const defs = el("defs", {}, svg);
+  const mkF = (id, std) => {
+    const f = el("filter", {id, x:"-80%", y:"-80%", width:"260%", height:"260%"}, defs);
+    el("feGaussianBlur", {stdDeviation:std, result:"b"}, f);
+    const m = el("feMerge", {}, f);
+    el("feMergeNode", {"in":"b"}, m);
+    el("feMergeNode", {"in":"SourceGraphic"}, m);
+  };
+  mkF("gl1","2.5"); mkF("gl2","5"); mkF("gl3","9");
+
+  const mkA = (id, fill) => {
+    const mk = el("marker", {id, viewBox:"0 0 8 8", refX:"7", refY:"4", markerWidth:"6", markerHeight:"6", orient:"auto"}, defs);
+    el("path", {d:"M0,1 L8,4 L0,7 Z", fill}, mk);
+  };
+  mkA("a-pos", "rgba(74,222,128,.9)");
+  mkA("a-neg", "rgba(248,113,113,.9)");
+  mkA("a-pos-dim", "rgba(74,222,128,.3)");
+  mkA("a-neg-dim", "rgba(248,113,113,.3)");
+
+  // Background
+  const bg = el("radialGradient", {id:"rg-bg", cx:"50%", cy:"52%", r:"55%"}, defs);
+  el("stop", {offset:"0%", "stop-color":"#0a1020"}, bg);
+  el("stop", {offset:"100%", "stop-color":"#04060e"}, bg);
+  el("rect", {width:W, height:H, fill:"url(#rg-bg)"}, svg);
+
+  // Dot grid
+  const pt = el("pattern", {id:"pt", width:"28", height:"28", patternUnits:"userSpaceOnUse"}, defs);
+  el("circle", {cx:"14", cy:"14", r:".6", fill:"rgba(100,116,139,.07)"}, pt);
+  el("rect", {width:W, height:H, fill:"url(#pt)"}, svg);
+
+  // Sector radial gradients
+  SECTORS.forEach(s => {
+    const g = el("radialGradient", {id:`rg-${s.id}`, cx:"50%", cy:"50%", r:"50%"}, defs);
+    el("stop", {offset:"0%", "stop-color":s.color, "stop-opacity":"0.22"}, g);
+    el("stop", {offset:"100%", "stop-color":s.color, "stop-opacity":"0"}, g);
+  });
+
+  // Animated beam path for mechanism→sector lines
+  if (hasMechSel) {
+    Object.entries(mechHighlight).forEach(([sid], idx) => {
+      const s = sMap[sid];
+      if (!s) return;
+      const pathId = `beam-path-${sid}`;
+      el("path", {id:pathId, d:`M 20 ${H/2} L ${s.x} ${s.y}`}, defs);
+    });
+  }
+
+  // ── CENTER GLOW ──
+  el("circle", {cx:SCX, cy:SCY, r:220, fill:"rgba(10,15,35,.4)", filter:"url(#gl3)"}, svg);
+
+  // ── MECHANISM → SECTOR BEAM LINES (drawn BELOW sectors) ──
+  if (hasMechSel) {
+    const m = MECHANISMS[selMech];
+    Object.entries(m.sectors).forEach(([sid, intensity]) => {
+      const s = sMap[sid];
+      if (!s) return;
+      const isPos = intensity > 0;
+      const col = isPos ? "rgba(74,222,128,.7)" : "rgba(248,113,113,.7)";
+      const glowCol = isPos ? "rgba(74,222,128,.15)" : "rgba(248,113,113,.15)";
+      const dx = s.x - 15, dy = s.y - SCY;
+
+      // Glow behind beam
+      el("line", {x1:"15", y1:SCY, x2:s.x, y2:s.y,
+        stroke:glowCol, "stroke-width":"20", filter:"url(#gl2)"}, svg);
+
+      // Main beam
+      const beamLen = Math.sqrt(dx*dx + dy*dy);
+      const pathId = `beam-${sid}`;
+      el("path", {id:pathId, d:`M 15 ${SCY} L ${s.x} ${s.y}`}, defs);
+
+      el("line", {x1:"15", y1:SCY, x2:s.x, y2:s.y,
+        stroke:col, "stroke-width":"2",
+        "stroke-dasharray":`${beamLen}`, "stroke-dashoffset":beamLen,
+        class:"beam", style:`animation-duration:0.4s;animation-delay:${Object.keys(m.sectors).indexOf(sid)*0.08}s`}, svg);
+
+      // Impact badge at sector end
+      const bCol = isPos ? "#22c55e" : "#ef4444";
+      const sign = isPos ? "▲" : "▼";
+      const strength = Math.abs(intensity);
+      const label = strength >= 0.9 ? `${sign} FORTE` : strength >= 0.5 ? `${sign} MEDIO` : `${sign} LIEVE`;
+      el("rect", {x:s.x-20, y:s.y-50, width:40, height:14, rx:4,
+        fill:"rgba(4,6,14,.9)", stroke:bCol, "stroke-width":1}, svg);
+      svgText(svg, label, {x:s.x, y:s.y-40, "text-anchor":"middle",
+        fill:bCol, "font-size":"7.5", "font-weight":"800"});
+    });
+  }
+
+  // ── CROSS-SECTOR ARCS ──
+  CROSS.forEach((lk, i) => {
+    const s1 = sMap[lk.from], s2 = sMap[lk.to];
+    if (!s1 || !s2) return;
+
+    const isSel = selCross === i;
+    const isFocused = hasSectorSel && (lk.from===selSector || lk.to===selSector);
+    const isDimmedBySector = hasSectorSel && !isFocused;
+    const isDimmedByMech = hasMechSel;
+    const isDimmed = isDimmedBySector || isDimmedByMech;
+
+    const pathD = arcPath(s1.x, s1.y, s2.x, s2.y);
+    const mid = arcMid(s1.x, s1.y, s2.x, s2.y);
+    const col = lk.dir > 0 ? "rgba(74,222,128,.75)" : "rgba(248,113,113,.75)";
+    const sw = 1.5 + lk.mag * 3;
+    const mk = lk.dir > 0 ? "url(#a-pos)" : "url(#a-neg)";
+    const opacity = isDimmed ? .04 : (isSel ? 1 : isFocused ? .9 : .5 * d);
+
+    // Glow for selected/focused
+    if (isSel || isFocused) {
+      el("path", {d:pathD, stroke:lk.dir>0?"rgba(74,222,128,.25)":"rgba(248,113,113,.25)",
+        "stroke-width":sw+10, fill:"none", filter:"url(#gl2)"}, svg);
+    }
+
+    // Arc
+    el("path", {d:pathD, stroke:col, "stroke-width":sw, fill:"none",
+      "marker-end":mk, opacity}, svg);
+
+    // Flow animation when selected/focused
+    if (isSel || isFocused) {
+      const ac = lk.dir>0 ? "rgba(74,222,128,.9)" : "rgba(248,113,113,.9)";
+      el("path", {d:pathD, stroke:ac, "stroke-width":2, fill:"none",
+        "stroke-dasharray":"6 10", class:"flow", style:"pointer-events:none"}, svg);
+      for (let p=0; p<3; p++) {
+        const dot = el("circle", {r:"3", fill:lk.dir>0?"#4ade80":"#f87171", opacity:".85"}, svg);
+        const am = el("animateMotion", {dur:`${1.6+p*.5}s`, begin:`${p*.5}s`, repeatCount:"indefinite"}, dot);
+        const mp = document.createElementNS("http://www.w3.org/2000/svg","mpath");
+        const tid = `fp-${i}-${p}`;
+        el("path", {id:tid, d:pathD}, defs);
+        mp.setAttributeNS("http://www.w3.org/1999/xlink","href","#"+tid);
+        am.appendChild(mp);
+      }
+    }
+
+    // Arc label — more visible
+    if (!isDimmed) {
+      const lop = isSel || isFocused ? 1 : .6;
+      const lc = lk.dir>0 ? "rgba(134,239,172,.9)" : "rgba(252,165,165,.9)";
+      const lbg = lk.dir>0 ? "rgba(74,222,128,.12)" : "rgba(248,113,113,.12)";
+      const lbd = lk.dir>0 ? "rgba(74,222,128,.25)" : "rgba(248,113,113,.25)";
+      const label = lk.desc;
+      const lw = Math.min(label.length * 4.8 + 12, 120);
+      el("rect", {x:mid.x-lw/2, y:mid.y-9, width:lw, height:14, rx:4,
+        fill:"rgba(4,6,14,.95)", stroke:lbd, "stroke-width":.8,
+        opacity:lop, style:"pointer-events:none"}, svg);
+      svgText(svg, label, {x:mid.x, y:mid.y+1.5, "text-anchor":"middle",
+        fill:lc, "font-size":"7", "font-weight":"700",
+        opacity:lop, style:"pointer-events:none"});
+      // Lag indicator
+      if (lk.lag > 0) {
+        svgText(svg, "⏱ +1", {x:mid.x+lw/2-8, y:mid.y-14, "text-anchor":"middle",
+          fill:"#818cf8", "font-size":"7", "font-weight":"700",
+          opacity:lop, style:"pointer-events:none"});
+      }
+    }
+
+    // Hit area
+    const hit = el("path", {d:pathD, stroke:"transparent",
+      "stroke-width":"24", fill:"none", style:"cursor:pointer"}, svg);
+    hit.addEventListener("click", e => {
+      e.stopPropagation();
+      selCross = selCross===i ? null : i;
+      selSector = null; selMech = null;
+      if (selCross!==null) showCrossDetail(i);
+      else clearPanel();
+      deselectMechs();
+      rebuild();
+    });
+    hit.addEventListener("mouseenter", e => showTip(lk.title, lk.why.slice(0,100)+"…", e));
+    hit.addEventListener("mouseleave", hideTip);
+  });
+
+  // ── SECTOR NODES ──
+  sPos.forEach(s => {
+    const sv = s.impact * d;
+    const col = iCol(sv);
+    const R = 44;
+    const isSel = selSector===s.id;
+    const isMechHighlighted = hasMechSel && mechHighlight[s.id] !== undefined;
+    const isMechDimmed = hasMechSel && !isMechHighlighted;
+    const isSectorDimmed = hasSectorSel && !isSel;
+    const isDimmed = isMechDimmed || isSectorDimmed;
+
+    const g = el("g", {style:"cursor:pointer", opacity:isDimmed?.1:1}, svg);
+
+    // Glow halo
+    el("circle", {cx:s.x, cy:s.y, r:R+28, fill:`url(#rg-${s.id})`,
+      opacity:isSel||isMechHighlighted ? 1 : .4}, g);
+
+    // Pulsing ring on selected or highlighted
+    if (isSel || isMechHighlighted) {
+      el("circle", {cx:s.x, cy:s.y, r:R+14, fill:"none",
+        stroke: isMechHighlighted
+          ? (mechHighlight[s.id]>0 ? "#4ade80" : "#f87171")
+          : s.color,
+        "stroke-width":2, opacity:.35, filter:"url(#gl1)", class:"pulse-ring"}, g);
+    }
+
+    // Impact ring (outer)
+    const circ = 2*Math.PI*(R+7);
+    const arcLen = (Math.min(Math.abs(sv),12)/12)*circ;
+    el("circle", {cx:s.x, cy:s.y, r:R+7, fill:"none",
+      stroke:"rgba(51,65,85,.2)", "stroke-width":3.5}, g);
+    if (Math.abs(sv) > 0.2) {
+      const ac = sv>0 ? "rgba(34,197,94,.65)" : "rgba(239,68,68,.65)";
+      el("circle", {cx:s.x, cy:s.y, r:R+7, fill:"none", stroke:ac,
+        "stroke-width":3.5,
+        "stroke-dasharray":`${arcLen} ${circ}`,
+        "stroke-dashoffset":sv>0?circ*.25:0,
+        transform:`rotate(${sv>0?-90:90} ${s.x} ${s.y})`}, g);
+    }
+
+    // Main circle
+    const rgb = hexRgb(s.color);
+    el("circle", {cx:s.x, cy:s.y, r:R,
+      fill:`rgba(${rgb},0.1)`,
+      stroke:isSel||isMechHighlighted ? s.color : `rgba(${rgb},0.4)`,
+      "stroke-width":isSel||isMechHighlighted ? 2.5 : 1.5,
+      filter:isSel||isMechHighlighted ? "url(#gl1)" : "none"}, g);
+
+    // Emoji
+    svgText(g, s.emoji, {x:s.x, y:s.y-16, "text-anchor":"middle", "font-size":"14"});
+
+    // Sector label
+    svgText(g, s.label, {x:s.x, y:s.y+2,
+      "text-anchor":"middle",
+      fill:isSel||isMechHighlighted ? s.color : `rgba(${rgb},0.85)`,
+      "font-size":"9", "font-weight":"700"});
+
+    // Impact value — BIG and clear
+    svgText(g, fmt(sv), {x:s.x, y:s.y+18,
+      "text-anchor":"middle",
+      fill:col, "font-size":"15", "font-weight":"800"});
+
+    // Tickers (tiny, below)
+    svgText(g, s.companies.slice(0,3).map(c=>c.t).join(" · "), {
+      x:s.x, y:s.y+30,
+      "text-anchor":"middle",
+      fill:"rgba(71,85,105,.55)", "font-size":"7"});
+
+    g.addEventListener("click", e => {
+      e.stopPropagation();
+      selSector = selSector===s.id ? null : s.id;
+      selCross = null; selMech = null;
+      if (selSector) showSectorDetail(s);
+      else clearPanel();
+      deselectMechs();
+      rebuild();
+    });
+    g.addEventListener("mouseenter", e =>
+      showTip(s.emoji+" "+s.label, `Impatto a T: ${fmt(s.impact)} → ora (${DECAY_LABELS[curCycle]}): ${fmt(sv)}`, e));
+    g.addEventListener("mouseleave", hideTip);
+  });
+
+  // Center annotation
+  svgText(svg, "📊 SETTORI", {x:SCX, y:SCY-6,
+    "text-anchor":"middle", fill:"rgba(51,65,85,.3)",
+    "font-size":"8.5", "font-weight":"700", "letter-spacing":"2"});
+  svgText(svg, hasMechSel ? "← quelli illuminati sono colpiti da questa forza" : "← clicca un cerchio per i dettagli", {
+    x:SCX, y:SCY+10,
+    "text-anchor":"middle", fill:"rgba(51,65,85,.22)", "font-size":"7"});
+
+  // ── GUIDE ANNOTATIONS (guide step overlay) ──
+  if (guideStep === 1) {
+    // Highlight left sidebar area by drawing an overlay arrow pointing left
+    el("rect", {x:2, y:2, width:230, height:H-4, rx:8,
+      fill:"none", stroke:"rgba(99,102,241,.5)", "stroke-width":"3",
+      "stroke-dasharray":"8 5"}, svg);
+    el("path", {d:`M 240 ${H/2-20} L 250 ${H/2} L 240 ${H/2+20}`,
+      fill:"none", stroke:"rgba(99,102,241,.7)", "stroke-width":"2"}, svg);
+    svgText(svg, "👈 Le FORZE sono qui a sinistra", {x:380, y:H/2,
+      "text-anchor":"start", fill:"#a5b4fc", "font-size":"11", "font-weight":"700",
+      filter:"url(#gl1)"});
+  }
+
+  // Click background to deselect
+  svg.addEventListener("click", () => {
+    selSector=null; selCross=null; selMech=null;
+    clearPanel(); deselectMechs(); rebuild();
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// SIDEBAR: Mechanism cards
+// ════════════════════════════════════════════════════════════
+function buildSidebar() {
+  const ml = document.getElementById("mech-list"); ml.innerHTML = "";
+  MECHANISMS.forEach((m, i) => {
+    const div = document.createElement("div");
+    div.className = "mech-card";
+    div.id = `mech-card-${i}`;
+
+    // Sector tags
+    const secTagsHTML = Object.entries(m.sectors).map(([sid, val]) => {
+      const sec = sMap[sid];
+      if (!sec) return "";
+      const isPos = val > 0;
+      const strength = Math.abs(val) >= 0.9 ? "●●●" : Math.abs(val) >= 0.5 ? "●●○" : "●○○";
+      return `<span class="mech-sec-tag" style="color:${sec.color};background:rgba(${hexRgb(sec.color)},.1);border-color:rgba(${hexRgb(sec.color)},.25)">
+        ${sec.emoji} ${sec.label} ${isPos?"▲":"▼"}${strength}
+      </span>`;
+    }).join("");
+
+    div.innerHTML = `
+      <div class="mech-dir-badge" style="background:${m.bgCol};border:1px solid ${m.bdCol}">
+        ${m.icon}
+      </div>
+      <div class="mech-info" style="flex:1">
+        <div class="mech-name">${m.label}</div>
+        <div class="mech-sub">${m.sub}</div>
+        <div class="mech-sectors">${secTagsHTML}</div>
+      </div>`;
+
+    div.title = m.desc;
+    div.addEventListener("click", e => {
+      e.stopPropagation();
+      const wasActive = selMech === i;
+      deselectMechs();
+      if (!wasActive) {
+        selMech = i;
+        div.classList.add("active");
+        selSector = null; selCross = null;
+        clearPanel();
+        setBottomBar(`⚡ "${m.label}" — ${m.desc} · Settori illuminati nel grafico`);
+        rebuild();
+      } else {
+        selMech = null;
+        clearPanel();
+        rebuild();
+      }
+    });
+    div.addEventListener("mouseenter", e => showTip(m.icon+" "+m.label, m.desc, e));
+    div.addEventListener("mouseleave", hideTip);
+    ml.appendChild(div);
+  });
+}
+
+function deselectMechs() {
+  document.querySelectorAll(".mech-card").forEach(c => c.classList.remove("active"));
+}
+
+// ════════════════════════════════════════════════════════════
+// PANEL: Sector detail
+// ════════════════════════════════════════════════════════════
+function showSectorDetail(s) {
+  const d = DECAY[curCycle];
+  const sv = s.impact * d;
+  document.getElementById("panel").classList.add("open");
+
+  document.getElementById("p-dot").style.cssText =
+    `width:10px;height:10px;border-radius:50%;background:${s.color};box-shadow:0 0 10px ${s.color}`;
+  document.getElementById("p-name").textContent = s.emoji+" "+s.label;
+  const pv = document.getElementById("p-val");
+  pv.textContent = fmt(sv); pv.style.color = iCol(sv);
+  document.getElementById("p-cycle").textContent =
+    curCycle===0 ? "⏱ IMPATTO ADESSO (T)" : `⏱ +${curCycle} CICLI — rimane il ${Math.round(DECAY[curCycle]*100)}% dell'impatto iniziale`;
+
+  const body = document.getElementById("p-body"); body.innerHTML = "";
+
+  // Which mechanisms hit this sector
+  const mechContrib = MECHANISMS.filter(m => m.sectors[s.id] !== undefined);
+  if (mechContrib.length) {
+    const t = document.createElement("div"); t.className = "p-section-title";
+    t.textContent = "⚡ FORZE CHE LO COLPISCONO";
+    body.appendChild(t);
+    const cont = document.createElement("div");
+    cont.className = "pi-mech-contrib";
+    mechContrib.forEach(m => {
+      const val = m.sectors[s.id];
+      const isPos = val > 0;
+      const col = isPos ? "#4ade80" : "#f87171";
+      const row = document.createElement("div"); row.className = "pi-mech-row";
+      row.innerHTML = `
+        <div class="pi-mech-icon" style="background:${m.bgCol};border:1px solid ${m.bdCol}">${m.icon}</div>
+        <div class="pi-mech-name">${m.label}</div>
+        <div class="pi-mech-val" style="color:${col}">${isPos?"▲":"▼"} ${val>=0.9||val<=-0.9?"FORTE":val>=0.5||val<=-0.5?"MEDIO":"LIEVE"}</div>`;
+      cont.appendChild(row);
+    });
+    body.appendChild(cont);
+  }
+
+  // Companies
+  const ct = document.createElement("div"); ct.className = "p-section-title";
+  ct.textContent = "📋 AZIENDE DEL SETTORE";
+  body.appendChild(ct);
+  s.companies.forEach(c => {
+    const cv = c.v * d, cc = iCol(cv), bw = Math.min(Math.abs(cv)/c.max*100,100);
+    const div = document.createElement("div"); div.className = "c-card"; div.style.borderLeftColor = cc;
+    div.innerHTML = `<div class="c-row"><span class="c-ticker">${c.t}</span><span class="c-val" style="color:${cc}">${fmt(cv)}</span></div>
+      <div class="c-bar-bg"><div class="c-bar" style="width:${bw}%;background:${cc};opacity:.8"></div></div>
+      <div class="c-note">${c.n}</div>`;
+    body.appendChild(div);
+  });
+
+  // Correlations
+  const links = CROSS.filter(l => l.from===s.id||l.to===s.id);
+  if (links.length) {
+    const xt = document.createElement("div"); xt.className = "p-section-title";
+    xt.textContent = "🔗 EFFETTI DOMINO (frecce)";
+    body.appendChild(xt);
+    links.forEach(lk => {
+      const isFrom = lk.from===s.id;
+      const oid = isFrom ? lk.to : lk.from;
+      const other = sMap[oid];
+      const col2 = lk.dir>0 ? "#4ade80" : "#f87171";
+      const div = document.createElement("div"); div.className = "x-item";
+      div.style.borderColor = lk.dir>0 ? "rgba(74,222,128,.15)" : "rgba(248,113,113,.15)";
+      const lagB = lk.lag>0 ? `<span class="x-lag">⏱ +${lk.lag} ciclo</span>` : "";
+      div.innerHTML = `<div class="x-row">
+        <span class="x-sec" style="color:${other?.color}">${isFrom?"↗":"↙"} ${other?.emoji} ${other?.label}</span>
+        ${lagB}<span class="x-str" style="color:${col2}">${lk.dir>0?"▲":"▼"} ${Math.round(lk.mag*100)}%</span></div>
+        <div class="x-desc">${lk.desc}</div>
+        <div class="x-why">${lk.why}</div>`;
+      div.addEventListener("click", () => div.classList.toggle("exp"));
+      body.appendChild(div);
+    });
+  }
+
+  // Narrative
+  const narr = document.createElement("div"); narr.className = "narr-box";
+  narr.style.borderColor = `rgba(${hexRgb(s.color)},.22)`;
+  narr.innerHTML = `<div class="narr-t" style="color:${s.color}">📖 Lettura del settore</div><div class="narr-b">${s.perché}</div>`;
+  body.appendChild(narr);
+
+  setBottomBar(s.perché);
+}
+
+function showCrossDetail(i) {
+  const lk = CROSS[i];
+  const s1 = sMap[lk.from], s2 = sMap[lk.to];
+  document.getElementById("panel").classList.add("open");
+  const col2 = lk.dir>0 ? "#4ade80" : "#f87171";
+  const verb = lk.dir>0 ? "trascina positivamente" : "trascina negativamente";
+
+  document.getElementById("p-dot").style.cssText =
+    `width:10px;height:10px;border-radius:50%;background:${col2}`;
+  document.getElementById("p-name").textContent = "Effetto Domino";
+  document.getElementById("p-val").textContent = `${lk.dir>0?"+":"-"}${Math.round(lk.mag*100)}%`;
+  document.getElementById("p-val").style.color = col2;
+  document.getElementById("p-cycle").textContent =
+    lk.lag>0 ? `⏱ Effetto ritardato: si sente al ciclo +${lk.lag}` : "⏱ Effetto immediato — stesso ciclo";
+
+  const body = document.getElementById("p-body");
+  body.innerHTML = `
+    <div style="padding:12px;background:rgba(12,18,38,.8);border-radius:10px;border:1px solid rgba(51,65,85,.2);">
+      <div style="font-size:10px;font-weight:700;color:#f1f5f9;margin-bottom:10px;line-height:1.4">${lk.title}</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:8px;background:rgba(6,10,22,.7);border-radius:7px;">
+        <div style="text-align:center;">
+          <div style="font-size:18px;">${s1?.emoji}</div>
+          <div style="font-size:9px;font-weight:700;color:${s1?.color};margin-top:2px;">${s1?.label}</div>
+        </div>
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:18px;">${lk.dir>0?"→":"⇢"}</div>
+          <div style="font-size:8px;color:${col2};font-weight:700;margin-top:1px;">${verb}</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:18px;">${s2?.emoji}</div>
+          <div style="font-size:9px;font-weight:700;color:${s2?.color};margin-top:2px;">${s2?.label}</div>
+        </div>
+      </div>
+      <div style="font-size:9.5px;color:#64748b;line-height:1.6;margin-bottom:10px;">${lk.why}</div>
+      <div style="display:flex;gap:6px;">
+        <div style="flex:1;background:rgba(20,30,55,.7);border-radius:6px;padding:8px;text-align:center">
+          <div style="font-size:15px;font-weight:800;color:${col2}">${Math.round(lk.mag*100)}%</div>
+          <div style="font-size:7.5px;color:#475569;letter-spacing:1px;margin-top:2px">INTENSITÀ</div>
+        </div>
+        <div style="flex:1;background:rgba(20,30,55,.7);border-radius:6px;padding:8px;text-align:center">
+          <div style="font-size:15px;font-weight:800;color:#a5b4fc">${lk.lag===0?"Subito":"+"+lk.lag+" ciclo"}</div>
+          <div style="font-size:7.5px;color:#475569;letter-spacing:1px;margin-top:2px">QUANDO</div>
+        </div>
+      </div>
+    </div>`;
+
+  setBottomBar(`🔗 ${lk.title} — ${lk.desc}`);
+}
+
+function clearPanel() {
+  document.getElementById("panel").classList.remove("open");
+  setBottomBar("👆 Clicca una FORZA a sinistra · un SETTORE (cerchio) · o una FRECCIA per i dettagli");
+}
+
+function setBottomBar(text) {
+  const bb = document.getElementById("bb-text");
+  bb.textContent = text;
+  bb.className = text ? "active" : "";
+}
+
+// ════════════════════════════════════════════════════════════
+// TOOLTIP
+// ════════════════════════════════════════════════════════════
+let _ttTm;
+function showTip(t, b, e) {
+  clearTimeout(_ttTm);
+  _ttTm = setTimeout(() => {
+    document.getElementById("tt-t").textContent = t;
+    document.getElementById("tt-b").textContent = b;
+    const tt = document.getElementById("tooltip");
+    tt.style.left = Math.min(e.clientX+14, window.innerWidth-260)+"px";
+    tt.style.top = Math.max(8, e.clientY-48)+"px";
+    tt.className = "vis";
+  }, 180);
+}
+function hideTip() { clearTimeout(_ttTm); document.getElementById("tooltip").className = ""; }
+
+// ════════════════════════════════════════════════════════════
+// CYCLE SELECTOR
+// ════════════════════════════════════════════════════════════
+document.querySelectorAll(".cyc").forEach(btn => {
+  btn.addEventListener("click", () => {
+    curCycle = parseInt(btn.dataset.c);
+    document.querySelectorAll(".cyc").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    rebuild();
+    if (selSector) showSectorDetail(sMap[selSector]);
+  });
+});
+
+// ════════════════════════════════════════════════════════════
+// LOGIC STRIP STEPS
+// ════════════════════════════════════════════════════════════
+document.querySelectorAll(".ls-step").forEach(step => {
+  step.addEventListener("click", () => {
+    document.querySelectorAll(".ls-step").forEach(s => s.classList.remove("active"));
+    step.classList.add("active");
+    const n = parseInt(step.dataset.step);
+    selSector=null; selCross=null; selMech=null;
+    deselectMechs(); clearPanel();
+
+    if (n === 0) {
+      setBottomBar("📰 PASSO 1: Succede un evento nel mondo reale — vedi la scheda in alto a sinistra.");
+    } else if (n === 1) {
+      setBottomBar("⚡ PASSO 2: Clicca una FORZA nel pannello sinistro — il grafico illuminerà i settori che essa colpisce.");
+    } else if (n === 2) {
+      setBottomBar("📊 PASSO 3: Ogni cerchio = un settore di borsa. Il numero dentro = quanto sale o scende (%). Clicca un cerchio per i dettagli.");
+    } else if (n === 3) {
+      setBottomBar("🔗 PASSO 4: Le frecce mostrano l'effetto domino tra settori. Clicca una freccia per capire perché.");
+    }
+    rebuild();
+  });
+});
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+function hexRgb(hex) {
+  return `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;
+}
+function rebuild() { buildSVG(); }
+buildSidebar();
+rebuild();
+</script>
+</body>
+</html>
