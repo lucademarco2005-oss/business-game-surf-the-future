@@ -103,9 +103,9 @@ SECURITIES = [
      "description": "Alphabet, la società madre di Google, è il gigante globale dell'AI con DeepMind che guida la ricerca in drug discovery (AlphaFold), robotica e AGI. Google Cloud è la terza piattaforma cloud mondiale e il motore di ricerca domina con il 91% del mercato. I ricavi 2025 superano $420B con margini operativi del 32%. DeepMind rappresenta il laboratorio AI più avanzato al mondo, con applicazioni che spaziano dalla scoperta di nuovi materiali alla previsione delle strutture proteiche. Il rischio principale è regolatorio (antitrust EU e USA).",
      "sector": "AI Drug Discovery", "region": "Nord America",
      "initial_price": 48.00, "market_cap": 4.8e12,
-     "pe_ratio": 30.36, "eps": -1.40, "dividend_yield": 0.0,
+     "pe_ratio": 30.36, "eps": 1.58, "dividend_yield": 0.0,
      "roi": 0.2720, "roe": 0.3890, "target_price": 62.00,
-     "risk_level": "alto", "beta": 1.27, "revenue": 4.2e11, "ebitda": 1.6e11,
+     "risk_level": 6, "beta": 1.27, "revenue": 4.2e11, "ebitda": 1.6e11,
      "annual_performance": 1.6382},
 
     # ══════════════════════════════════════════════════════
@@ -236,7 +236,7 @@ SECURITIES = [
      "description": "UnitedHealth è il più grande assicuratore sanitario USA con $447,56B di revenue TTM — la quinta azienda per ricavi al mondo. Ma il 2025 è stato devastante: perdita operativa di $278M (vs +$7,8B nel 2024) per la combinazione di tagli ai rimborsi Medicare Advantage, inflazione dei costi medici e l'impatto della violazione informatica di Change Healthcare. Il titolo ha perso il 35% da gennaio 2025. UNH è il caso di studio perfetto del paradosso difensivo: un'azienda enorme non è necessariamente sicura — i rischi regolatori e i cicli di rimborso Medicare possono distruggere i margini nonostante la scala. Per il 2026, il mercato sta prezzando una normalizzazione dei costi medici e un recupero del loss operativo. Il dividendo rimane stabile. Beta 0.38 — nonostante la crisi, il titolo si muove poco rispetto al mercato.",
      "sector": "Healthcare Systems", "region": "USA",
      "initial_price": 280.00, "market_cap": 3.3e11,
-     "pe_ratio": 27.92, "eps": -0.30, "dividend_yield": 1.7,
+     "pe_ratio": 27.92, "eps": 10.03, "dividend_yield": 1.7,
      "roi": 0.0690, "roe": 0.1220, "target_price": 360.00,
      "risk_level": 6, "beta": 0.65, "revenue": 4.5e11, "ebitda": 2.1e10,
      "annual_performance": -0.1139},
@@ -449,73 +449,53 @@ def seed_database():
         conn.close()
 
 
-# ─── STORICO PRE-GAME (6 periodi precedenti) ──────────────────────────────────
-# Colonne 1→5 → cicli -5→-1  |  Colonna 6 = current_price, salvata da start_game() al ciclo 0
-# Fonte: tabella fornita dal game master (prezzi in EUR, scala reale di gioco)
+# ─── STORICO PRE-GAME (5 trimestri precedenti) ────────────────────────────────
+# Mapping: array[0..4] → cicli -5..-1 (oldest → newest)
+# array[0] = Q1 2025 (Mar 2025)   →  ciclo -5
+# array[1] = Q2 2025 (Jun 2025)   →  ciclo -4
+# array[2] = Q3 2025 (Sep 2025)   →  ciclo -3
+# array[3] = Q4 2025 (Dec 2025)   →  ciclo -2
+# array[4] = Q1 2026 (Mar 2026)   →  ciclo -1
+# Ciclo 0 = current_price, salvato da start_game().
+# Fonte: azioni_storico_5_trimestri.xlsx (Digrin monthly real price, ultimo mese del trimestre).
+# Note: SDGR Q4 2025/Q1 2026, AGCO Q1 2026 forward-filled (dati Digrin non disponibili
+#       per quei periodi). ABB: tutti i trimestri mancanti (delisted/outdated), usato
+#       initial_price come placeholder per non lasciare il grafico vuoto.
 
 HISTORICAL_PRICES = {
-    # ticker:  [col1,   col2,   col3,   col4,   col5]
-    "0700.HK": [59.0,   60.5,   58.7,   57.9,   56.2],
-    "0883.HK": [19.6,   19.5,   18.6,   18.0,   17.8],
-    "A":       [152.8,  152.5,  154.0,  147.4,  143.1],
-    "AAPL":    [202.7,  203.1,  214.0,  218.7,  221.9],
-    "ABBNY":   [59.7,   59.6,   58.6,   58.5,   60.2],
-    "AMGN":    [272.0,  283.3,  297.6,  307.1,  306.9],
-    "AMZN":    [175.5,  183.3,  177.2,  188.2,  191.8],
-    "ARM":     [135.7,  143.9,  139.9,  142.9,  155.4],
-    "ASML":    [724.4,  737.7,  768.3,  758.9,  749.1],
-    "AVGO":    [213.1,  218.3,  209.1,  206.7,  206.7],
-    "AZN":     [78.0,   76.2,   75.1,   76.4,   79.7],
-    "BABA":    [142.1,  135.1,  131.8,  134.0,  136.3],
-    "BGI":     [4.2,    4.2,    4.3,    4.2,    4.2],
-    "BIDU":    [97.6,   98.9,   104.4,  104.4,  103.7],
-    "BNTX":    [108.3,  106.8,  105.7,  108.0,  111.5],
-    "BP":      [29.3,   28.8,   28.8,   29.7,   31.1],
-    "BYDDY":   [87.9,   84.1,   90.5,   96.0,   88.2],
-    "CAT":     [388.7,  392.8,  389.2,  389.3,  384.6],
-    "CVX":     [158.0,  160.7,  162.7,  160.8,  159.3],
-    "DANOY":   [13.5,   13.0,   13.1,   13.4,   13.5],
-    "DE":      [404.0,  394.3,  395.6,  411.9,  430.0],
-    "DHR":     [228.5,  221.6,  210.6,  204.4,  207.2],
-    "E":       [33.7,   33.3,   32.0,   31.5,   32.7],
-    "FANUY":   [20.8,   19.7,   19.6,   20.3,   20.8],
-    "FDX":     [252.4,  255.5,  263.1,  259.7,  267.9],
-    "GE":      [215.7,  219.4,  215.2,  209.1,  209.3],
-    "GMAB":    [26.4,   25.8,   24.6,   24.2,   25.4],
-    "GOOGL":   [162.3,  159.0,  167.2,  166.1,  169.6],
-    "HON":     [202.6,  201.3,  205.7,  207.3,  209.3],
-    "IFNNY":   [39.5,   40.4,   39.9,   39.7,   39.3],
-    "IQV":     [202.3,  203.8,  208.3,  211.7,  216.4],
-    "ISRG":    [496.2,  490.8,  502.6,  513.8,  531.0],
-    "JNJ":     [156.8,  158.4,  158.3,  157.5,  158.1],
-    "KO":      [67.5,   67.3,   67.6,   66.1,   65.6],
-    "LI":      [29.1,   29.4,   29.8,   28.4,   26.7],
-    "LLY":     [841.8,  846.8,  860.0,  849.7,  825.2],
-    "LMT":     [476.6,  479.0,  477.8,  477.1,  476.4],
-    "MC.PA":   [791.8,  799.8,  801.3,  789.4,  781.4],
-    "MCD":     [305.5,  295.2,  298.1,  294.6,  296.2],
-    "MDLZ":    [67.7,   67.4,   67.0,   66.1,   66.1],
-    "META":    [539.1,  546.5,  576.7,  592.5,  590.2],
-    "MSFT":    [395.0,  404.5,  409.7,  401.1,  405.9],
-    "NSRGY":   [104.0,  104.4,  104.5,  103.7,  102.0],
-    "NVDA":    [113.6,  122.5,  124.0,  124.7,  129.4],
-    "NVO":     [97.3,   97.4,   97.9,   98.9,   97.5],
-    "NVS":     [112.9,  110.6,  113.2,  113.0,  114.0],
-    "PEP":     [165.4,  161.4,  161.8,  164.4,  160.9],
-    "RACE":    [504.0,  506.6,  506.5,  504.6,  506.0],
-    "SAP":     [251.6,  247.9,  250.0,  255.9,  265.6],
-    "SHEL":    [71.1,   70.8,   70.9,   71.7,   69.5],
-    "SIEGY":   [108.9,  110.1,  109.8,  110.4,  109.5],
-    "TSLA":    [240.2,  228.5,  239.2,  243.9,  260.6],
-    "TSM":     [151.1,  153.5,  165.6,  168.3,  173.0],
-    "TTE":     [56.2,   56.4,   57.0,   58.1,   58.0],
-    "UL":      [59.2,   59.5,   59.8,   59.1,   57.5],
-    "UNH":     [495.2,  485.5,  469.2,  463.5,  475.9],
-    "UNP":     [254.0,  249.7,  253.6,  242.0,  242.1],
-    "UPS":     [127.4,  126.0,  125.8,  127.3,  126.7],
-    "VRTX":    [413.0,  430.7,  419.4,  437.2,  461.0],
-    "WAT":     [429.7,  413.9,  401.8,  401.5,  386.8],
-    "XOM":     [134.4,  127.3,  124.9,  118.1,  118.4],
+    # ticker:  [Q1 2025, Q2 2025, Q3 2025, Q4 2025, Q1 2026]
+    "ABB":     [   55.00,    55.00,    55.00,    55.00,    55.00],
+    "ADM":     [   48.01,    52.78,    59.74,    57.49,    72.69],
+    "AGCO":    [   92.57,   103.16,   107.07,   104.32,   104.32],
+    "AMZN":    [  190.26,   219.39,   219.57,   230.82,   208.27],
+    "ASML":    [  662.63,   801.39,   968.09,  1069.86,  1320.83],
+    "AVGO":    [  167.43,   275.65,   329.91,   346.10,   309.51],
+    "AZN":     [   73.50,    69.88,    76.72,    91.93,   197.22],
+    "BNTX":    [   91.06,   106.47,    98.62,    95.20,    88.88],
+    "CCJ":     [   41.16,    74.23,    83.86,    91.49,   108.61],
+    "CEG":     [  201.63,   322.76,   329.07,   353.27,   279.25],
+    "CRSP":    [   34.03,    48.64,    64.81,    52.44,    47.57],
+    "CTVA":    [   62.93,    74.53,    67.63,    67.03,    83.71],
+    "DE":      [  469.35,   508.49,   457.26,   465.57,   563.30],
+    "FDX":     [  243.78,   227.31,   235.81,   288.86,   356.18],
+    "GOOGL":   [  154.64,   176.23,   243.10,   313.00,   287.56],
+    "ILMN":    [   79.34,    95.41,    94.97,   131.16,   123.26],
+    "INTC":    [   22.71,    22.40,    33.55,    36.90,    44.13],
+    "ISRG":    [  495.27,   543.41,   447.23,   566.36,   460.99],
+    "LLY":     [  825.91,   779.53,   763.00,  1074.68,   919.77],
+    "MDT":     [   89.86,    87.17,    95.24,    96.06,    86.65],
+    "MRNA":    [   28.35,    27.59,    25.83,    29.49,    50.80],
+    "NVDA":    [  108.38,   157.99,   186.58,   186.50,   174.40],
+    "OKLO":    [   21.63,    55.99,   111.63,    71.76,    49.59],
+    "ROK":     [  258.38,   332.17,   349.53,   389.07,   358.88],
+    "RXRX":    [    5.29,     5.06,     4.88,     4.09,     3.07],
+    "SDGR":    [   19.74,    20.12,    20.06,    20.06,    20.06],
+    "TER":     [   82.60,    89.92,   137.64,   193.56,   296.46],
+    "UNH":     [  523.75,   311.97,   345.30,   330.11,   270.59],
+    "UPS":     [  109.99,   100.94,    83.53,    99.19,    98.38],
+    "VRTX":    [  484.82,   445.20,   391.64,   453.36,   446.54],
+    "VST":     [  117.44,   193.81,   195.92,   161.33,   150.33],
+    "XPO":     [  107.58,   126.29,   129.27,   135.91,   194.55],
 }
 
 
