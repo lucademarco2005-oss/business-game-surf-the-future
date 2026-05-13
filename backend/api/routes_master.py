@@ -40,6 +40,7 @@ class CreatePlayerRequest(BaseModel):
 
 class UpdatePlayerRequest(BaseModel):
     active: Optional[bool] = None
+    current_cash: Optional[float] = None
 
 
 @router.post("/game/start")
@@ -287,7 +288,7 @@ def api_update_descriptions():
 
 @router.patch("/players/{player_id}")
 def api_update_player(player_id: int, request: UpdatePlayerRequest):
-    """Attiva o disattiva un giocatore."""
+    """Attiva/disattiva un giocatore o aggiorna il suo cash."""
     conn = get_db()
     try:
         player = repo.get_player(conn, player_id)
@@ -295,7 +296,26 @@ def api_update_player(player_id: int, request: UpdatePlayerRequest):
             raise HTTPException(status_code=404, detail="Player not found")
         if request.active is not None:
             repo.set_player_active(conn, player_id, request.active)
+        if request.current_cash is not None:
+            if request.current_cash < 0:
+                raise HTTPException(status_code=400, detail="Cash cannot be negative")
+            repo.update_player_cash(conn, player_id, request.current_cash)
         conn.commit()
         return repo.get_player(conn, player_id)
+    finally:
+        conn.close()
+
+
+@router.delete("/players/{player_id}")
+def api_delete_player(player_id: int):
+    """Elimina un giocatore e tutti i dati associati (trades, posizioni, storico, punteggi)."""
+    conn = get_db()
+    try:
+        player = repo.get_player(conn, player_id)
+        if not player:
+            raise HTTPException(status_code=404, detail="Player not found")
+        repo.delete_player(conn, player_id)
+        conn.commit()
+        return {"deleted": True, "player_id": player_id, "name": player["name"]}
     finally:
         conn.close()
