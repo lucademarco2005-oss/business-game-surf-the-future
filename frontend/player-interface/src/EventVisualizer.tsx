@@ -267,7 +267,7 @@ export default function EventVisualizer({ eventTitle, eventNarrative, stocks, tr
       ctx.fillStyle = dist < 0.5 ? "#fbbf24" : "rgba(241,245,249,0.3)";
       ctx.font = `${dist < 0.5 ? "bold " : ""}${10 / view.scale}px monospace`;
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      ctx.fillText(c === 0 ? "T0" : `T+${c}`, cx + r + 4 / view.scale, cy);
+      ctx.fillText(`c.${triggerCycle + c}`, cx + r + 4 / view.scale, cy);
     });
 
     // Playhead
@@ -355,7 +355,7 @@ export default function EventVisualizer({ eventTitle, eventNarrative, stocks, tr
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText(`EVT`, ecx, ecy - 7);
     ctx.fillStyle = "rgba(241,245,249,0.75)"; ctx.font = `${10 / view.scale}px monospace`;
-    ctx.fillText(cycle < 0.05 ? "shock" : `T+${cycle.toFixed(1)}`, ecx, ecy + 8);
+    ctx.fillText(cycle < 0.05 ? "shock" : `c.${(triggerCycle + cycle).toFixed(1)}`, ecx, ecy + 8);
 
     ctx.restore();
   }, [evData, layout, animTick, cycle, view, showCascade, seriesByTicker, cascadeCycles, valueAt]);
@@ -428,8 +428,8 @@ export default function EventVisualizer({ eventTitle, eventNarrative, stocks, tr
                onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
             <canvas ref={canvasRef} className="absolute inset-0" />
             <div className="absolute bottom-3 left-3 px-2 py-1 rounded bg-black/60 border border-white/10 backdrop-blur">
-              <div className="text-[9px] uppercase tracking-wider text-slate-500 font-mono">Ciclo</div>
-              <div className="text-lg font-mono text-amber-300">{cycle < 0.05 ? "T0" : `T+${cycle.toFixed(1)}`}</div>
+              <div className="text-[9px] uppercase tracking-wider text-slate-500 font-mono">Ciclo gioco</div>
+              <div className="text-lg font-mono text-amber-300">{(triggerCycle + cycle).toFixed(1).replace(/\.0$/, "")}</div>
             </div>
           </div>
 
@@ -459,7 +459,7 @@ export default function EventVisualizer({ eventTitle, eventNarrative, stocks, tr
                     className="flex flex-col items-center gap-1 cursor-pointer pointer-events-auto">
                     <div className={`w-px h-2 ${cycle >= c - 0.02 ? "bg-amber-500/60" : "bg-white/15"}`} />
                     <div className={`text-[9px] font-mono ${cycle >= c - 0.02 ? "text-amber-400/80" : "text-slate-600"}`}>
-                      {c === 0 ? "T0" : `T+${c}`}
+                      c.{triggerCycle + c}
                     </div>
                     {cascadeCycles.has(c) && showCascade && (
                       <div className="text-[8px] font-mono text-violet-400/70 -mt-0.5">cascade</div>
