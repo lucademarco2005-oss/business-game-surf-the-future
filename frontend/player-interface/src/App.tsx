@@ -1393,6 +1393,8 @@ export default function App() {
           eventTitle={selectedEvent.title}
           eventNarrative={selectedEvent.body}
           stocks={stocks.map(s => ({ ticker: s.ticker, sector: s.sector }))}
+          triggerCycle={selectedEvent.game_cycle}
+          currentGameCycle={gameState?.current_cycle ?? selectedEvent.game_cycle}
           onClose={() => setShowVisualizer(false)}
         />
       )}

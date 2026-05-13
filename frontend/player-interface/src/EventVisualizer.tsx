@@ -69,10 +69,14 @@ interface Props {
   eventTitle: string;
   eventNarrative: string;
   stocks: Stock[];
+  triggerCycle?: number;
+  currentGameCycle?: number;
   onClose: () => void;
 }
 
-export default function EventVisualizer({ eventTitle, eventNarrative, stocks, onClose }: Props) {
+export default function EventVisualizer({ eventTitle, eventNarrative, stocks, triggerCycle = 0, currentGameCycle = 0, onClose }: Props) {
+  const initialCycle = Math.max(0, Math.min(4, currentGameCycle - triggerCycle));
+
   const [evData, setEvData] = useState<EventTemplate | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +85,7 @@ export default function EventVisualizer({ eventTitle, eventNarrative, stocks, on
   const wrapRef = useRef<HTMLDivElement>(null);
   const [animTick, setAnimTick] = useState(0);
   const [view, setView] = useState({ scale: 1, tx: 0, ty: 0 });
-  const [cycle, setCycle] = useState(0);
+  const [cycle, setCycle] = useState(initialCycle);
   const [playing, setPlaying] = useState(false);
   const [showCascade, setShowCascade] = useState(true);
   const dragRef = useRef<{ x: number; y: number; startTx: number; startTy: number; moved: boolean } | null>(null);
