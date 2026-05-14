@@ -67,6 +67,15 @@ def set_player_active(conn: sqlite3.Connection, player_id: int, active: bool):
     conn.execute("UPDATE players SET active = ? WHERE id = ?", (1 if active else 0, player_id))
 
 
+def delete_player(conn: sqlite3.Connection, player_id: int):
+    """Elimina un giocatore e a cascata trades, posizioni, storico e punteggi."""
+    conn.execute("DELETE FROM trades WHERE player_id = ?", (player_id,))
+    conn.execute("DELETE FROM portfolios WHERE player_id = ?", (player_id,))
+    conn.execute("DELETE FROM portfolio_history WHERE player_id = ?", (player_id,))
+    conn.execute("DELETE FROM volpe_doro_scores WHERE player_id = ?", (player_id,))
+    conn.execute("DELETE FROM players WHERE id = ?", (player_id,))
+
+
 # ─── SECURITIES ──────────────────────────────────────────────
 
 def get_all_securities(conn: sqlite3.Connection) -> list[dict]:

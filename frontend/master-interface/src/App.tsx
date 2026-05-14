@@ -70,6 +70,8 @@ export default function App() {
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerCash, setNewPlayerCash] = useState<number>(10000000);
   const [expandedPlayer, setExpandedPlayer] = useState<number | null>(null);
+  const [editingCashFor, setEditingCashFor] = useState<number | null>(null);
+  const [editingCashValue, setEditingCashValue] = useState<string>("");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -230,6 +232,46 @@ export default function App() {
 
   const togglePlayerActive = async (player: Player) => {
     try { await axios.patch(`/api/master/players/${player.id}`, { active: !player.active }); await fetchPlayers(); } catch {}
+  };
+
+  const startEditCash = (player: Player) => {
+    setEditingCashFor(player.id);
+    setEditingCashValue(String(player.current_cash));
+  };
+
+  const cancelEditCash = () => {
+    setEditingCashFor(null);
+    setEditingCashValue("");
+  };
+
+  const confirmEditCash = async (playerId: number) => {
+    const newCash = parseFloat(editingCashValue);
+    if (isNaN(newCash) || newCash < 0) {
+      setError("Cash non valido");
+      return;
+    }
+    try {
+      await axios.patch(`/api/master/players/${playerId}`, { current_cash: newCash });
+      setEditingCashFor(null);
+      setEditingCashValue("");
+      await fetchPlayers();
+    } catch (e: unknown) {
+      const msg = axios.isAxiosError(e) && e.response?.data?.detail ? e.response.data.detail : "Errore aggiornamento cash";
+      setError(String(msg));
+    }
+  };
+
+  const deletePlayer = async (player: Player) => {
+    if (!window.confirm(`Eliminare definitivamente "${player.name}"?\n\nVerranno cancellati anche tutti i suoi ordini, posizioni e storico. L'operazione NON e' reversibile.`)) {
+      return;
+    }
+    try {
+      await axios.delete(`/api/master/players/${player.id}`);
+      await fetchPlayers();
+    } catch (e: unknown) {
+      const msg = axios.isAxiosError(e) && e.response?.data?.detail ? e.response.data.detail : "Errore eliminazione giocatore";
+      setError(String(msg));
+    }
   };
 
   const deactivateTemplate = async (id: number) => {
@@ -663,25 +705,48 @@ export default function App() {
                       <th className="px-4 py-3 text-right font-bold">Totale</th>
                       <th className="px-4 py-3 text-right font-bold">Perf %</th>
                       <th className="px-4 py-3 text-center font-bold">Attivo</th>
+                      <th className="px-4 py-3 text-center font-bold">Azioni</th>
                       <th className="px-4 py-3 text-center font-bold">Det.</th>
                     </tr>
                   </thead>
                   <tbody>
                     {players.length === 0 && (
-                      <tr><td colSpan={7} className="px-6 py-10 text-center text-slate-600 text-sm">Nessun giocatore. Creane uno qui sotto.</td></tr>
+                      <tr><td colSpan={8} className="px-6 py-10 text-center text-slate-600 text-sm">Nessun giocatore. Creane uno qui sotto.</td></tr>
                     )}
                     {players.map((p) => {
                       const portfolioValue = p.total_value - p.current_cash;
                       const isExpanded = expandedPlayer === p.id;
+                      const isEditingCash = editingCashFor === p.id;
                       return (
                         <tr key={p.id} className="border-b border-[#1e1e35]/50 last:border-0">
-                          <td colSpan={7} className="p-0">
+                          <td colSpan={8} className="p-0">
                             <div>
                               <div className="flex items-center hover:bg-[#171727]/30 transition-colors">
                                 <div className="px-6 py-3.5 flex-1 min-w-[140px]">
                                   <div className="font-black text-white text-base">{p.name}</div>
                                 </div>
-                                <div className="px-4 py-3.5 w-[130px] text-right font-mono text-slate-300 font-semibold">€{fmt(p.current_cash)}</div>
+                                <div className="px-4 py-3.5 w-[180px] text-right font-mono text-slate-300 font-semibold">
+                                  {isEditingCash ? (
+                                    <div className="flex items-center justify-end gap-1">
+                                      <span className="text-slate-500 text-xs">€</span>
+                                      <input type="number" min={0} step={1000} value={editingCashValue}
+                                        autoFocus
+                                        onChange={(e) => setEditingCashValue(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") confirmEditCash(p.id);
+                                          if (e.key === "Escape") cancelEditCash();
+                                        }}
+                                        className="w-28 bg-[#0f0f1e] border border-violet-600/40 text-white font-mono text-xs px-2 py-1 rounded focus:outline-none focus:border-violet-500 text-right"
+                                      />
+                                      <button onClick={() => confirmEditCash(p.id)}
+                                        className="text-emerald-400 hover:text-emerald-300 cursor-pointer px-1" title="Conferma">✓</button>
+                                      <button onClick={cancelEditCash}
+                                        className="text-slate-500 hover:text-white cursor-pointer px-1" title="Annulla">✕</button>
+                                    </div>
+                                  ) : (
+                                    <span>€{fmt(p.current_cash)}</span>
+                                  )}
+                                </div>
                                 <div className="px-4 py-3.5 w-[130px] text-right font-mono text-slate-300 font-semibold">€{fmt(portfolioValue)}</div>
                                 <div className="px-4 py-3.5 w-[130px] text-right font-mono font-black text-white text-base">€{fmt(p.total_value)}</div>
                                 <div className={`px-4 py-3.5 w-[110px] text-right font-mono font-black text-base ${perfColor(p.performance)}`}>
@@ -694,6 +759,17 @@ export default function App() {
                                     }`}
                                     title={p.active ? "Disattiva" : "Attiva"}
                                   />
+                                </div>
+                                <div className="px-4 py-3.5 w-[110px] text-center">
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <button onClick={() => startEditCash(p)}
+                                      disabled={isEditingCash}
+                                      className="px-2 py-1 rounded text-xs bg-violet-900/30 text-violet-300 hover:bg-violet-800/50 border border-violet-800/40 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                      title="Modifica cash">✏️</button>
+                                    <button onClick={() => deletePlayer(p)}
+                                      className="px-2 py-1 rounded text-xs bg-red-900/30 text-red-300 hover:bg-red-800/50 border border-red-800/40 transition-colors cursor-pointer"
+                                      title="Elimina giocatore">🗑</button>
+                                  </div>
                                 </div>
                                 <div className="px-4 py-3.5 w-[70px] text-center">
                                   <button onClick={() => setExpandedPlayer(isExpanded ? null : p.id)}

@@ -9,3 +9,4 @@ __pycache__/
 *.log
 .vite/
 dist/
+.claude/worktrees/
