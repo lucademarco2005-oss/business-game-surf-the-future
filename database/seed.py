@@ -458,15 +458,16 @@ def seed_database():
 # array[4] = Q1 2026 (Mar 2026)   →  ciclo -1
 # Ciclo 0 = current_price, salvato da start_game().
 # Fonte: azioni_storico_5_trimestri.xlsx (Digrin monthly real price, ultimo mese del trimestre).
-# Note: SDGR Q4 2025/Q1 2026, AGCO Q1 2026 forward-filled (dati Digrin non disponibili
-#       per quei periodi). ABB: tutti i trimestri mancanti (delisted/outdated), usato
-#       initial_price come placeholder per non lasciare il grafico vuoto.
+# Integrazioni Yahoo Finance (14 mag 2026):
+#   - ABB: 5 trimestri da ADR OTC USA "ABBNY" (USD) dopo delisting NYSE.
+#   - SDGR: Q4 2025 (17.88) e Q1 2026 (11.36).
+#   - AGCO: Q1 2026 (115.87).
 
 HISTORICAL_PRICES = {
     # ticker:  [Q1 2025, Q2 2025, Q3 2025, Q4 2025, Q1 2026]
-    "ABB":     [   55.00,    55.00,    55.00,    55.00,    55.00],
+    "ABB":     [   52.14,    59.67,    71.95,    73.97,    80.48],
     "ADM":     [   48.01,    52.78,    59.74,    57.49,    72.69],
-    "AGCO":    [   92.57,   103.16,   107.07,   104.32,   104.32],
+    "AGCO":    [   92.57,   103.16,   107.07,   104.32,   115.87],
     "AMZN":    [  190.26,   219.39,   219.57,   230.82,   208.27],
     "ASML":    [  662.63,   801.39,   968.09,  1069.86,  1320.83],
     "AVGO":    [  167.43,   275.65,   329.91,   346.10,   309.51],
@@ -489,7 +490,7 @@ HISTORICAL_PRICES = {
     "OKLO":    [   21.63,    55.99,   111.63,    71.76,    49.59],
     "ROK":     [  258.38,   332.17,   349.53,   389.07,   358.88],
     "RXRX":    [    5.29,     5.06,     4.88,     4.09,     3.07],
-    "SDGR":    [   19.74,    20.12,    20.06,    20.06,    20.06],
+    "SDGR":    [   19.74,    20.12,    20.06,    17.88,    11.36],
     "TER":     [   82.60,    89.92,   137.64,   193.56,   296.46],
     "UNH":     [  523.75,   311.97,   345.30,   330.11,   270.59],
     "UPS":     [  109.99,   100.94,    83.53,    99.19,    98.38],
